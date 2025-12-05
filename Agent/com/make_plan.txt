@@ -1,0 +1,35 @@
+
+
+# 1. Generate Queries
+q_data = search_query_generation("67 meme")
+search_queries = q_data[0]
+
+# 2. Search (using 1st query, top 3 results)
+s_data = search_engine_1(search_queries[0], 3)
+urls = s_data[0]
+
+# 3. Scrape & Clean
+all_text = ""
+for url in urls:
+    raw_data = search_engine_2(url)
+    raw_html = raw_data[0]
+    
+    clean_data = html_cleaner(raw_html, url)
+    clean_text = clean_data[0]
+    all_text += clean_text + "\n"
+
+# 4. Create RAG
+rag_data = make_rag_database(all_text)
+db_folder = rag_data[0]
+
+# 5. Retrieve
+retrieval_data = retrieval_from_rag_database("67 meme origin and meaning", 5, db_folder)
+chunks = retrieval_data[0]
+
+# 6. Generate
+gen_data = generation(chunks, "67 meme origin and meaning")
+final_answer = gen_data[0]
+
+# 7. Save
+safe_path = file_checker("67_meme.txt")
+write_file(safe_path, final_answer, 0)

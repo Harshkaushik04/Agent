@@ -1,0 +1,14 @@
+1. search_query_generation(sentence): [list of strings,key string]
+2. search_engine_1(search_query,top_k): [list of string top_k urls,key string]
+3. search_engine_2(url): [raw_html(string),key string]
+4. html_cleaner(raw_html): [cleaned_html(string),key string]
+5. write_file(file_path,content,whether_addition): <no output>
+6. read_file(file_path): [file_content(string)]
+7. make_rag_database(data): [folder_path(string),key string]
+8. retrieval_from_rag_database(search_query,top_k,database_folder_path): [list of string top_k chunks,key string]
+9. generation(list of string top_k chunks,query): [full answer string, after think string,key string]
+10. file_checker(file_path): updated_file_path(string)
+11. video_to_text(video_link/video_path,whether_link_or_path): [text string,key string]
+12. audio_to_text(audio_link/audio_path,whether_link_or_path): [text string,key string]
+13. question_answer(text,query): [text string,key string]
+14. summarise(text):[text string,key string]

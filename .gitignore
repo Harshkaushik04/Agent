@@ -1,0 +1,8 @@
+models/
+rag_storage/
+node_modules/
+venv/
+models
+rag_storage
+node_modules
+venv
