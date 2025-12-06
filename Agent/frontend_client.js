@@ -24,18 +24,16 @@ function askUser(what_to_ask) {
 async function sendRequest(username,sessionNumber) {
     let user_input = "disapprove";
     let res = {};
-
     while (user_input !== "approve") {
         res = await axios.post("http://localhost:3000/make-plan", {
             links_list:links_list,
             paths_list:paths_list,
             texts_list:texts_list,
             prompt:prompt,
-            // username:username,
-            // sessionNumber:sessionNumber
+            username:username,
+            sessionNumber:sessionNumber
         });
-        // WAIT for user input (this was missing)
-        console.log(`PLAN:\n${JSON.stringify(res.data.plan,null,2)}`);
+        console.log(`PLAN:\n${res.data.plan}`);
         user_input = await askUser("enter(approve/disapprove)");
     }
 
@@ -48,14 +46,20 @@ async function sendRequest(username,sessionNumber) {
 async function userLogin(){
     let user_input=await askUser("enter username:");
     let approval=await askUser("confirm?(yes/no)");
-    while(approval=="no"){
+    while(approval!="yes"){
         user_input=await askUser("enter username:");
     }
-    const res=await axios.post("https://localhost:3000/login",{
+    const res=await axios.post("http://localhost:3000/login",{
         username:user_input
     });
     let sessionNumber=res.data.sessionNumber;
-    return username,sessionNumber;
+    // console.log(`type of sessionNumber:${typeof sessionNumber}`)
+    return {username:user_input,sessionNumber:sessionNumber};
 }
-// let username,sessionNumber=userLogin();
-sendRequest();
+
+async function main(){
+    let {username,sessionNumber}=await userLogin();
+    await sendRequest(username,sessionNumber);
+}
+main();
+

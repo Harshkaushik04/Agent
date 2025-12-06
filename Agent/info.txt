@@ -1,0 +1,8 @@
+mongo db data at ~/mongodb-data
+
+starting mongo db local server:
+mongod --dbpath ~/mongodb-data
+
+
+mongo db server running at:
+mongodb://localhost:27017
