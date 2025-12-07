@@ -43,7 +43,7 @@ function Chat() {
 
     return (
       <div style={{color:"yellow",display:"flex"}}>
-        <div><ScrollBoxWithClickableBoxesAndToggleBar width={"7vw"} height={"95vh"} titles={historyTitles} setHistoryChat={setHistoryChat} Navigate={Navigate}/>
+        <div><ScrollBoxWithClickableBoxesAndToggleBar width={"7vw"} height={"95vh"} titles={historyTitles} setHistoryChat={setHistoryChat} Navigate={Navigate} setHistoryTitles={setHistoryTitles}/>
         <button style={{width:80,height:40}}
         onClick={async()=>{await loadNewChat()}}>New Chat</button>
         <button style={{width:80,height:40}}
@@ -81,7 +81,7 @@ function ScrollBoxWithContentAndSearchBar({ width1 = 300, height1 = "100vh", wid
   );
 }
 
-function ScrollBoxWithClickableBoxesAndToggleBar({ width = 300, height = "100vh", titles,setHistoryChat,Navigate}) {
+function ScrollBoxWithClickableBoxesAndToggleBar({ width = 300, height = "100vh", titles,setHistoryChat,Navigate,setHistoryTitles}) {
   const [removeSideBar,setRemoveSideBar]=useState(false);
   function toggle(){
     setRemoveSideBar(removeSideBar=>!removeSideBar)
@@ -123,13 +123,13 @@ function ScrollBoxWithClickableBoxesAndToggleBar({ width = 300, height = "100vh"
             textOverflow: "ellipsis",
           }}
         >
-          <ClickableBox title={content} color="white" setHistoryChat={setHistoryChat} Navigate={Navigate}/>
+          <ClickableBox title={content} color="white" setHistoryChat={setHistoryChat} Navigate={Navigate} setHistoryTitles={setHistoryTitles}/>
         </div>
       ))}
     </div>
   );
 }
-function ClickableBox({ title,color,setHistoryChat,Navigate }) {
+function ClickableBox({ title,color,setHistoryChat,Navigate,setHistoryTitles }) {
   async function handleClickHistory(title){
     // console.log("hi")
     const res=await axios.get("http://localhost:3000/click-history",
@@ -146,18 +146,48 @@ function ClickableBox({ title,color,setHistoryChat,Navigate }) {
     // console.log("hi2")
     await setHistoryChat(res.data.value_json);
   }
+  async function loadHistoryTitles(model="DeepSeek-R1-Distill-Qwen-7B-Q4_K_M"){
+    const res=await axios.post("http://localhost:3000/load-history-titles",{
+      model:model
+    },{
+      headers:{
+        token:localStorage.getItem("token")
+      }
+    })
+    if(!res.data.valid) Navigate("/login");
+    setHistoryTitles(res.data.titles);
+    }
+  async function handleDelete(title){
+    const res=await axios.delete("http://localhost:3000/delete-chat",
+      {
+        headers:{
+          token:localStorage.getItem("token"),
+          model:localStorage.getItem("model"),
+          chat_number:Number(title.match(/\d+$/)[0])
+        }
+      }
+    )
+    if(!res.data.valid) Navigate("/login");
+    localStorage.setItem("chat_number",res.data.chat_number);
+    await loadHistoryTitles(localStorage.getItem("model"));
+  }
   return (
-    <a className="hoverBox"
+    <div>
+    <span className="hoverBox"
       onClick={
         async ()=>{await handleClickHistory(title)}}
       style={{
-        display: "block",
+        display: "inline-block",
         textDecoration: "none",
         color: color,
+        cursor:"pointer"
       }}
     >
       {title}
-    </a>
+    </span>
+    <span style={{marginLeft:5,cursor:"pointer"}} 
+    onClick={async ()=>{await handleDelete(title)}}><img src="/delete.png" style={{width:15,height:15,backgroundColor:"white"}}/></span>
+    </div>
   );
 }
 function ChatRenderer({ messages }) {

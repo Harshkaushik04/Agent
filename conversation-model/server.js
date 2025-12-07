@@ -193,7 +193,7 @@ app.get("/update-chat",async (req,res)=>{
     console.log(`[update-chat] username:${username},model:${model},title:title${chat_number}`)
     res.json({
         valid:true,
-        value_json:user.messages
+        value_json:(user?.messages ? user.messages : [])
     })
 })
 
@@ -212,6 +212,22 @@ app.get("/click-history",async (req,res)=>{
     res.json({
         valid:true,
         value_json:(user?.messages ? user.messages:[])
+    })
+})
+
+app.delete("/delete-chat",async (req,res)=>{
+    console.log(`[delete-chat] entered request`)
+    let username=req.username;
+    let model=req.headers.model;
+    let chat_number=req.headers.chat_number;
+    await HistoryModel.deleteOne({
+        username:username,
+        model:model,
+        title:`title${chat_number}`
+    })
+    res.json({
+        valid:true,
+        chat_number:-1
     })
 })
 
