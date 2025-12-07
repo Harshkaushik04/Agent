@@ -167,21 +167,32 @@ function ChatRenderer({ messages }) {
               <div key={index} style={{ marginBottom: "12px" }}>
 
                   {/* USER */}
-                  {msg.role === "user" && (
+                  {msg.role == "user" && (
                       <div style={{ color: "white" }}>
-                          <strong>USER:</strong> {msg.text}
+                          <strong>USER:</strong> {msg.content}
                       </div>
                   )}
 
                   {/* MODEL */}
-                  {msg.role === "model" && (
-                      <>
+                  {msg.role =="model" && (
+                      <>  
+                        <span style={{ color: "white" }}>
+                          <strong>MODEL:</strong> 
+                        </span>
                           <div style={{ color: "#4CAF50" }}>  
                               {msg.before_think}
                           </div>
                           <div style={{ color: "yellow" }}>
                               {msg.after_think}
                           </div>
+                      </>
+                  )}
+                  {/* SYSTEM */}
+                  {msg.role =="system" && (
+                      <>  
+                          <span style={{ color: "white" }}>
+                          <strong>SYSTEM:</strong> {msg.content}
+                        </span>
                       </>
                   )}
 
@@ -225,7 +236,7 @@ function SearchBar({
         setHistoryChat((prev)=>{
           return [...prev,{
             role:"user",
-            text:value
+            content:value
           }]
         });
         setValue("");
@@ -246,6 +257,7 @@ function SearchBar({
         model:localStorage.getItem("model"),
         chat_number:localStorage.getItem("chat_number")
       }})
+        console.log(`res1.data.value_json:${res1.data.value_json}`)
         setHistoryChat(res1.data.value_json);
         setWhetherMessageSent(false);
     }

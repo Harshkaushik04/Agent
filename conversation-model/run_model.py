@@ -74,23 +74,39 @@ def main():
         "title": f"title{chat_number}"
     })
 
+    ld_history = HistoryModel.find_one({
+        "username": username,
+        "model": model,
+        "title": f"title{chat_number}"
+    })
+
     history = []
     if old_history and "messages" in old_history:
         for msg in old_history["messages"]:
-            content = msg.get("content", "")
+            role = msg.get("role", "user")
             
-            # If main text is empty, try to combine parts
-            if not content:
-                part1 = msg.get("before_think", "")
-                part2 = msg.get("after_think", "")
-                content = f"{part1}\n{part2}".strip()
+            # You requested to assume content is always filled. 
+            # We check "text" (DB schema) first, then fallback to "content" just in case.
+            content = msg.get("text") or msg.get("content", "")
 
-            history.append({
-                "role": msg.get("role", "user"),
-                "content": content
-            })
+            if role == "model":
+                # For the model, we include the extra thinking fields
+                history.append({
+                    "role": role,
+                    "content": content,
+                    "before_think": msg.get("before_think", ""),
+                    "after_think": msg.get("after_think", "")
+                })
+            else:
+                # For user or system, we strictly send only role and content
+                history.append({
+                    "role": role,
+                    "content": content
+                })
 
+    # Append the current new message
     history.append({"role": "user", "content": user_message})
+    print(f"[run-model]history:{history}")
     raw_prompt=convert_history_to_prompt(history)
     print("prompt:",raw_prompt)
     # Stream Generation
@@ -133,6 +149,7 @@ def main():
 full_response, before_think, after_think = main()
 
 new_message = {
+    "role":"model",
     "content": full_response,       
     "before_think": before_think,
     "after_think": after_think
@@ -142,7 +159,8 @@ HistoryModel.update_one({
     "username":username,
     "model":model,
     "title":f"title{chat_number}"},
-    {"$push":{"messages":user_message}}
+    {"$push":{"messages":{"role":"user",
+                          "content":user_message}}}
 )
 HistoryModel.update_one(
     {"username":username,

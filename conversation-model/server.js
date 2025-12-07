@@ -202,11 +202,13 @@ app.get("/click-history",async (req,res)=>{
     let username=req.username;
     let model=req.headers.model;
     let chat_number=req.headers.chat_number;
+    console.log(`[click-history]username:${username} model:${model} title:title${chat_number}`)
     let user=await HistoryModel.findOne({
         username:username,
         model:model,
-        chat_number:chat_number
+        title:`title${chat_number}`
     })
+    console.log(`user.messages:${user.messages}`)
     res.json({
         valid:true,
         value_json:(user?.messages ? user.messages:[])
