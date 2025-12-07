@@ -1,9 +1,11 @@
 import { useState,useRef, useEffect } from "react";
 import axios from "axios"
+import { useNavigate } from "react-router-dom";
 function Signup() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   let err_ref=useRef();
+  let Navigate=useNavigate();
   async function handleSubmit(e) {
     e.preventDefault();
     const res=await axios.post("http://localhost:3000/signup",{

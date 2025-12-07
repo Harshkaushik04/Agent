@@ -17,6 +17,8 @@
     "JSON": "^1.0.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.0.1",
+    "nodeman": "^1.1.2",
+    "path": "^0.12.7",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.10.1"

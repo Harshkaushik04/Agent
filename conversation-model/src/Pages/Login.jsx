@@ -1,8 +1,10 @@
 import { useState,useRef, useEffect } from "react";
 import axios from "axios"
+import { useNavigate } from "react-router-dom";
 function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  let navigate=useNavigate();
   let err_ref=useRef();
   async function handleSubmit(e) {
     e.preventDefault();
@@ -13,7 +15,9 @@ function Login() {
     if(res.data.valid){
         localStorage.setItem("token",res.data.token);
         localStorage.setItem("username",res.data.username);
-        Navigate("/");
+        localStorage.setItem("model","DeepSeek-R1-Distill-Qwen-7B-Q4_K_M")
+        console.log("hi");
+        navigate("/chat");
     }
     else{
         err_ref.current.style.display="block";

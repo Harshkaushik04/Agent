@@ -1,25 +1,59 @@
 import { useState, useRef, useEffect } from "react";
 import './../App.css'
-function Chat() {
-  const [historyTitles,setHistoryTitles]=useState();
-  const [historyChat,setHistoryChat]=useState();
-  // 1. Added more items so the content exceeds 200px height
-  const testItems = [
-    "History 1", "History 2", "History 3", "History 4", 
-    "History 5", "History 6", "History 7", "History 8", 
-    "History 9", "History 10", "History 11", "History 12"
-  ];
+import axios from "axios"
+import { useNavigate } from "react-router-dom";
 
-  return (
-    <div style={{color:"yellow",display:"flex"}}>
-      <div><ScrollBoxWithClickableBoxesAndToggleBar width={"7vw"} height={"95vh"} titles={testItems} />
-      <button style={{width:80,height:40}}>Log out</button></div>
-      {/* <div><SearchBar whetherMessageSent={false}/></div> */}
-      <div style={{marginLeft:10}}>{<ScrollBoxWithContentAndSearchBar width1={"90vw"} height1={"88vh"} width2={"80vw"} content={random_text} whetherMessageSent={false}/>}</div>
-    </div>
-  );
-}
-function ScrollBoxWithContentAndSearchBar({ width1 = 300, height1 = "100vh", width2,height2,content,whetherMessageSent }) {
+function Chat() {
+    const [historyTitles,setHistoryTitles]=useState([]);
+    const [historyChat,setHistoryChat]=useState([]);
+    const Navigate=useNavigate();
+    async function loadHistoryTitles(model="DeepSeek-R1-Distill-Qwen-7B-Q4_K_M"){
+        const res=await axios.post("http://localhost:3000/load-history-titles",{
+          model:model
+        },{
+          headers:{
+            token:localStorage.getItem("token")
+          }
+        })
+        if(!res.data.valid) Navigate("/login");
+        setHistoryTitles(res.data.titles);
+    }
+
+    async function loadNewChat(model="DeepSeek-R1-Distill-Qwen-7B-Q4_K_M"){
+        const res=await axios.post("http://localhost:3000/load-new-chat",{
+          model:model
+        },{
+          headers:{
+            token:localStorage.getItem("token")
+          }
+        })
+        if(!res.data.valid) Navigate("/login");
+        localStorage.setItem("chat_number",res.data.chat_number);
+        await loadHistoryTitles(model);
+    }
+
+    function logOut(){
+        localStorage.removeItem("token");
+        localStorage.removeItem("username");
+        Navigate("/login");
+    }
+    useEffect(()=>{
+      loadHistoryTitles()
+    },[])
+
+    return (
+      <div style={{color:"yellow",display:"flex"}}>
+        <div><ScrollBoxWithClickableBoxesAndToggleBar width={"7vw"} height={"95vh"} titles={historyTitles} setHistoryChat={setHistoryChat} Navigate={Navigate}/>
+        <button style={{width:80,height:40}}
+        onClick={async()=>{await loadNewChat()}}>New Chat</button>
+        <button style={{width:80,height:40}}
+        onClick={()=>{logOut()}}>Log out</button></div>
+        {/* <div><SearchBar whetherMessageSent={false}/></div> */}
+        <div style={{marginLeft:10}}>{<ScrollBoxWithContentAndSearchBar width1={"90vw"} height1={"88vh"} width2={"80vw"} content={historyChat} setHistoryChat={setHistoryChat}/>}</div>
+      </div>
+    );
+  }
+function ScrollBoxWithContentAndSearchBar({ width1 = 300, height1 = "100vh", width2,height2,content,setHistoryChat }) {
   return (
     <div style={{
       // border: "1px solid #ccc"
@@ -36,18 +70,18 @@ function ScrollBoxWithContentAndSearchBar({ width1 = 300, height1 = "100vh", wid
         // overflowY: "scroll" 
       }}
     >
-      {content}
+      <ChatRenderer messages={content}/>
     </div>
     <div style={{
       display:"flex",
       paddingTop:30,
       justifyContent:"center"
-    }}><SearchBar placeholder="Conversation-model" width={width2} height={height2} whetherMessageSent={whetherMessageSent}/></div>
+    }}><SearchBar placeholder="Conversation-model" width={width2} height={height2} historyChat={content} setHistoryChat={setHistoryChat}/></div>
     </div>
   );
 }
 
-function ScrollBoxWithClickableBoxesAndToggleBar({ width = 300, height = "100vh", titles}) {
+function ScrollBoxWithClickableBoxesAndToggleBar({ width = 300, height = "100vh", titles,setHistoryChat,Navigate}) {
   const [removeSideBar,setRemoveSideBar]=useState(false);
   function toggle(){
     setRemoveSideBar(removeSideBar=>!removeSideBar)
@@ -89,33 +123,81 @@ function ScrollBoxWithClickableBoxesAndToggleBar({ width = 300, height = "100vh"
             textOverflow: "ellipsis",
           }}
         >
-          <ClickableBox href={"https://www.youtube.com/"} content={content} color="white"/>
+          <ClickableBox title={content} color="white" setHistoryChat={setHistoryChat} Navigate={Navigate}/>
         </div>
       ))}
     </div>
   );
 }
-function ClickableBox({ href, content,color }) {
+function ClickableBox({ title,color,setHistoryChat,Navigate }) {
+  async function handleClickHistory(title){
+    // console.log("hi")
+    const res=await axios.get("http://localhost:3000/click-history",
+    {
+      headers:{
+        token:localStorage.getItem("token"),
+        model:localStorage.getItem("model"),
+        chat_number:Number(title.match(/\d+$/)[0])
+      }
+    }) 
+    console.log(`res.data.valid:${res.data.valid}`)
+    if(!res.data.valid) Navigate("/login");
+    localStorage.setItem("chat_number",title.match(/\d+$/)[0]);
+    // console.log("hi2")
+    await setHistoryChat(res.data.value_json);
+  }
   return (
     <a className="hoverBox"
-      href={href}
+      onClick={
+        async ()=>{await handleClickHistory(title)}}
       style={{
         display: "block",
         textDecoration: "none",
         color: color,
       }}
     >
-      {content}
+      {title}
     </a>
   );
 }
+function ChatRenderer({ messages }) {
+  return (
+      <div style={{ fontFamily: "monospace", padding: "10px" }}>
+          {messages?.map((msg, index) => (
+              <div key={index} style={{ marginBottom: "12px" }}>
+
+                  {/* USER */}
+                  {msg.role === "user" && (
+                      <div style={{ color: "white" }}>
+                          <strong>USER:</strong> {msg.text}
+                      </div>
+                  )}
+
+                  {/* MODEL */}
+                  {msg.role === "model" && (
+                      <>
+                          <div style={{ color: "#4CAF50" }}>  
+                              {msg.before_think}
+                          </div>
+                          <div style={{ color: "yellow" }}>
+                              {msg.after_think}
+                          </div>
+                      </>
+                  )}
+
+              </div>
+          ))}
+      </div>
+  );
+}
+
 function SearchBar({ 
   placeholder = "Conversation-model",
   width = "480px",
-  height = "40px", // Default minimum height
-  whetherMessageSent 
+  height = "40px" // Default minimum height
+  ,historyChat,setHistoryChat,Navigate
 }) {
-
+  const [whetherMessageSent,setWhetherMessageSent]=useState(false);
   const [value, setValue] = useState("");
   const textareaRef = useRef(null);
 
@@ -136,9 +218,40 @@ function SearchBar({
     
     // Handle scrollbar visibility
     textarea.style.overflowY = scrollHeight > maxHeight ? "auto" : "hidden";
-
+    
   }, [value]);
-
+  async function sendMessage(){
+        setWhetherMessageSent(true);
+        setHistoryChat((prev)=>{
+          return [...prev,{
+            role:"user",
+            text:value
+          }]
+        });
+        setValue("");
+        const res=await axios.post("http://localhost:3000/send-message",{
+          message:value,
+          model:localStorage.getItem("model"),
+          chat_number:localStorage.getItem("chat_number")
+        },
+        {
+          headers:{
+          token:localStorage.getItem("token")
+        }})
+        if(!res.data.valid) Navigate("/login");
+        const res1=await axios.get("http://localhost:3000/update-chat",
+      {
+        headers:{
+        token:localStorage.getItem("token"),
+        model:localStorage.getItem("model"),
+        chat_number:localStorage.getItem("chat_number")
+      }})
+        setHistoryChat(res1.data.value_json);
+        setWhetherMessageSent(false);
+    }
+    function stopMessage(){
+        setWhetherMessageSent(false);
+    }
   return (
     <div
       style={{
@@ -198,148 +311,20 @@ function SearchBar({
         <img
           src="/stop.png"
           alt="stop"
-          style={{ width: 18, height: 18, cursor: "pointer" }}
+          style={{ width: 18, height: 18, cursor: "pointer" }} 
+          onClick={()=>{setWhetherMessageSent(false)}}
         />
       ) : (
         <img
           src="/send.png"
           alt="send"
           style={{ width: 18, height: 18, cursor: "pointer" }}
+          onClick={async ()=>{await sendMessage()}}
         />
       )}
     </div>
   );
 }
-
-let random_text = `
-Ah okay — you want a scrollable box, and its scrollbar should stay fixed on the screen even when the page outside is scrolled.
-
-In other words:
-
-The element should not move when the page scrolls
-The scrollbar inside the element should scroll normally
-The element must always stay in the same spot on the screen
-
-This is exactly what position: fixed does.
-
-Solution: Use position: "fixed" on the scroll container
-
-<div
-  style=\{{
-    position: "fixed",
-    top: "20px",
-    right: "20px",
-    width: "300px",
-    height: "400px",
-    background: "#222",
-    overflowY: "auto",
-    color: "white",
-    padding: "10px",
-    borderRadius: "8px",
-  }}
->
-  \${items.map((t, i) => (
-    <div key="\${i}">\${t}</div>
-  ))}
-</div>
-let random_text=Ah okay — you want a scrollable box, and its scrollbar should stay fixed on the screen even when the page outside is scrolled. In other words: The element should not move when the page scrolls The scrollbar inside the element should scroll normally The element must always stay in the same spot on the screen This is exactly what position: fixed does. ✅ Solution: Use position
-let random_text=Ah okay — you want a scrollable box, and its scrollbar should stay fixed on the screen even when the page outside is scrolled. In other words: The element should not move when the page scrolls The scrollbar inside the element should scroll normally The element must always stay in the same spot on the screen This is exactly what position: fixed does. ✅ Solution: Use position
-let random_text=Ah okay — you want a scrollable box, and its scrollbar should stay fixed on the screen even when the page outside is scrolled. In other words: The element should not move when the page scrolls The scrollbar inside the element should scroll normally The element must always stay in the same spot on the screen This is exactly what position: fixed does. ✅ Solution: Use position
-In other words:
-
-The element should not move when the page scrolls
-The scrollbar inside the element should scroll normally
-The element must always stay in the same spot on the screen
-
-This is exactly what position: fixed does.
-
-Solution: Use position: "fixed" on the scroll container
-
-<div
-  style=\{{
-    position: "fixed",
-    top: "20px",
-    right: "20px",
-    width: "300px",
-    height: "400px",
-    background: "#222",
-    overflowY: "auto",
-    color: "white",
-    padding: "10px",
-    borderRadius: "8px",
-  }}
->
-  \${items.map((t, i) => (
-    <div key="\${i}">\${t}</div>
-  ))}
-</div>
-let random_text=Ah okay — you want a scrollable box, and its scrollbar should stay fixed on the screen even when the page outside is scrolled. In other words: The element should not move when the page scrolls The scrollbar inside the element should scroll normally The element must always stay in the same spot on the screen This is exactly what position: fixed does. ✅ Solution: Use position
-let random_text=Ah okay — you want a scrollable box, and its scrollbar should stay fixed on the screen even when the page outside is scrolled. In other words: The element should not move when the page scrolls The scrollbar inside the element should scroll normally The element must always stay in the same spot on the screen This is exactly what position: fixed does. ✅ Solution: Use position
-let random_text=Ah okay — you want a scrollable box, and its scrollbar should stay fixed on the screen even when the page outside is scrolled. In other words: The element should not
-In other words:
-
-The element should not move when the page scrolls
-The scrollbar inside the element should scroll normally
-The element must always stay in the same spot on the screen
-
-This is exactly what position: fixed does.
-
-Solution: Use position: "fixed" on the scroll container
-
-<div
-  style=\{{
-    position: "fixed",
-    top: "20px",
-    right: "20px",
-    width: "300px",
-    height: "400px",
-    background: "#222",
-    overflowY: "auto",
-    color: "white",
-    padding: "10px",
-    borderRadius: "8px",
-  }}
->
-  \${items.map((t, i) => (
-    <div key="\${i}">\${t}</div>
-  ))}
-</div>
-let random_text=Ah okay — you want a scrollable box, and its scrollbar should stay fixed on the screen even when the page outside is scrolled. In other words: The element should not move when the page scrolls The scrollbar inside the element should scroll normally The element must always stay in the same spot on the screen This is exactly what position: fixed does. ✅ Solution: Use position
-let random_text=Ah okay — you want a scrollable box, and its scrollbar should stay fixed on the screen even when the page outside is scrolled. In other words: The element should not move when the page scrolls The scrollbar inside the element should scroll normally The element must always stay in the same spot on the screen This is exactly what position: fixed does. ✅ Solution: Use position
-let random_text=Ah okay — you want a scrollable box, and its scrollbar should stay fixed on the screen even when the page outside is scrolled. In other words: The element should not
-In other words:
-
-The element should not move when the page scrolls
-The scrollbar inside the element should scroll normally
-The element must always stay in the same spot on the screen
-
-This is exactly what position: fixed does.
-
-Solution: Use position: "fixed" on the scroll container
-
-<div
-  style=\{{
-    position: "fixed",
-    top: "20px",
-    right: "20px",
-    width: "300px",
-    height: "400px",
-    background: "#222",
-    overflowY: "auto",
-    color: "white",
-    padding: "10px",
-    borderRadius: "8px",
-  }}
->
-  \${items.map((t, i) => (
-    <div key="\${i}">\${t}</div>
-  ))}
-</div>
-let random_text=Ah okay — you want a scrollable box, and its scrollbar should stay fixed on the screen even when the page outside is scrolled. In other words: The element should not move when the page scrolls The scrollbar inside the element should scroll normally The element must always stay in the same spot on the screen This is exactly what position: fixed does. ✅ Solution: Use position
-let random_text=Ah okay — you want a scrollable box, and its scrollbar should stay fixed on the screen even when the page outside is scrolled. In other words: The element should not move when the page scrolls The scrollbar inside the element should scroll normally The element must always stay in the same spot on the screen This is exactly what position: fixed does. ✅ Solution: Use position
-let random_text=Ah okay — you want a scrollable box, and its scrollbar should stay fixed on the screen even when the page outside is scrolled. In other words: The element should not
-...
-`;
 
 
 export default Chat;
