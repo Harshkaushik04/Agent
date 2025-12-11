@@ -115,7 +115,7 @@ def main():
         temperature=0.6,
         max_tokens=None,
         stream=True,
-        stop=["User:"]
+        stop=["<|im_end|>"]
     )
     full_response = ""
     
