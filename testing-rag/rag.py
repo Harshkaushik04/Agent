@@ -67,7 +67,7 @@ class GGUFEmbedder:
 
             try:
                 response = self.llm.create_embedding(text)
-                
+                print("type:",type(response))
                 # Handle varying response formats from llama-cpp-python versions
                 if isinstance(response, dict) and "data" in response:
                     vector = response["data"][0]["embedding"]
