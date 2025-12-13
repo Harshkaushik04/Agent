@@ -175,14 +175,21 @@ def re_ranking_via_gen_model(mongo_docs,query,gen_model,n_results):
     for doc in mongo_docs:
         # Prompt the LLM to be a judge
         score_prompt = f"""<|im_start|>system
-    Rate the relevance of this text to the user query on a scale of 0 to 10. Output ONLY the number.
-    <|im_end|>
-    <|im_start|>user
-    Query: {query}
-    Text Snippet: {doc['page_content']}...
-    <|im_end|>
-    <|im_start|>assistant
-    """
+You are a relevance classifier.
+Task: Rate how well the provided Text answers the User Query.
+Scale:
+0 = Completely unrelated (e.g., different topic, football, math).
+5 = Related topic but does not contain the answer.
+10 = Contains the exact answer.
+
+Output format: Just the integer score (0-10).
+<|im_end|>
+<|im_start|>user
+Query: {query}
+Text: {doc['page_content']}
+<|im_end|>
+<|im_start|>assistant
+"""
         try:
             # Generate a tiny response (just the number)
             output = gen_model(score_prompt, max_tokens=5, stop=["<|im_end|>"], temperature=0.1)

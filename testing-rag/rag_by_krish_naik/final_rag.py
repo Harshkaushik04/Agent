@@ -16,7 +16,7 @@ chroma_collection_name=os.getenv("CHROMA_COLLECTION_NAME")
 
 which_to_run=int(input("Which to run:"))
 #if 0=>everything without re ranking, 1=>generation without re ranking 2=> delete
-if which_to_run==0 or which_to_run==1:
+if which_to_run!=2:
     query=input("QUERY:")
 if which_to_run==0:
     ingestion_retrieval_generation_without_re_ranking(flag=1,
@@ -58,3 +58,19 @@ if which_to_run==1:
                     embed_n_ctx=8192*3,
                     embed_n_batch=512,
                     retrieve_n_results=5)
+if which_to_run==3:
+    retrieval_generation(mongo_url=mongo_url,
+                    mongo_database_name=mongo_database_name,
+                    mongo_collection_name=mongo_collection_name,
+                    chroma_host=chroma_host,
+                    chroma_port=chroma_port,
+                    embedding_model_path=embedding_model_path,
+                    chroma_collection_name=chroma_collection_name,
+                    gen_model_path=gen_model_path,
+                    query=query,
+                    gen_n_ctx=12000,
+                    gen_n_batch=512,
+                    embed_n_ctx=8192*3,
+                    embed_n_batch=512,
+                    retrieve_n_results=20,
+                    re_rank_n_results=5)
