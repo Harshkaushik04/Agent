@@ -39,3 +39,15 @@ MCP
 computer upse and multimodal agents
 RL fine tuning
 memory framework
+
+16 dec 2025:
+-completed react,websockets,learnt to use vector database on basic level and implementation of basic rag
+-completed some of the tools:like rag,scrapping,search query generation for agent
+next to complete:
+-remaining tools
+-explore various apis which can be given as tools to agent
+-bring conversation model styled frontend to agent
+-apply websockets in it for better ui experience of text appearing
+-improve the prompts/architecture 
+-read rag papers,agentic ai architectures for improvements
+-langchain.langgraph,mcp,rl fine tuning,etc
