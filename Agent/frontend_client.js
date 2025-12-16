@@ -2,9 +2,6 @@ const args = require("minimist")(process.argv.slice(2));
 const axios = require("axios");
 const readline = require("readline");
 
-const links_list = args.links_list;
-const paths_list = args.paths_list;
-const texts_list = args.texts_list;
 const prompt = args.prompt;
 
 function askUser(what_to_ask) {
@@ -26,9 +23,6 @@ async function sendRequest(username,sessionNumber) {
     let res = {};
     while (user_input !== "approve") {
         res = await axios.post("http://localhost:3000/make-plan", {
-            links_list:links_list,
-            paths_list:paths_list,
-            texts_list:texts_list,
             prompt:prompt,
             username:username,
             sessionNumber:sessionNumber
