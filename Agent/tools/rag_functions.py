@@ -485,10 +485,10 @@ gen_n_ctx=13000
 gen_n_batch=512
 gen_model_path=os.getenv("DEEPSEEK_REASONING_MODEL_PATH")
 
-def modified_generation(gen_model,top_docs,query,prompt_load_path=""):
+def modified_generation(gen_model,top_docs,query,prompt_path,before_formated_words,after_formated_words):
     # Use 'top_5_docs' instead of 'mongo_docs'
     context_str = "\n".join([f"- {d.get('page_content', '')}" for d in top_docs])
-    if prompt_load_path=="":
+    if prompt_path=="":
         prompt = f"""<|im_start|>system
     You are a helpful research assistant. 
 Your task is to answer the user's question using ONLY the provided documents.
@@ -504,10 +504,15 @@ GUIDELINES:
     <|im_start|>assistant
     """
     else:
-        with open(prompt_load_path,"r") as f:
+        with open(prompt_path,"r") as f:
             prompt=f.read()
-        prompt=prompt.replace("{context_str}",context_str)
-        prompt=prompt.replace("{query}",query)
+        len1=len(before_formated_words)
+        len2=len(after_formated_words)
+        if len1!=len2:
+            raise ValueError("[Error] length of before formatted words array not equal to after formatted words array")
+        for i in range(len1):
+            prompt = prompt.replace(f"{{{before_formated_words[i]}}}", after_formated_words[i])
+
     print(f"\nprompt:{prompt}")
     print("\n--- AGENT THINKING ---")
 
@@ -532,8 +537,11 @@ def generation_from_context(mongo_docs,search_query):
                             processor=Processor.GPU,
                             n_ctx=gen_n_ctx,
                             n_batch=gen_n_batch)
+    context_str = "\n".join([f"- {d.get('page_content', '')}" for d in mongo_docs])
     modified_generation(gen_model=gen_model,
             top_docs=mongo_docs,
             query=search_query,
-            prompt_load_path="../prompts/generation_with_context.txt")
+            prompt_path="../prompts/generation_with_context.txt",
+            before_formated_words=["context_str","query"],
+            after_formated_words=[context_str,search_query])
     unload_gen_model(gen_model)

@@ -99,53 +99,86 @@ def parse_and_clean_html(html, url):
     return f"\n--- SOURCE: {url} ---\n" + "\n".join(unique_content)
 
 # --- MAIN ---
-async def complete_search(search_query, top_k):
-    CONFIG["maxResults"] = top_k
+async def complete_search(search_query, top_k, already_searched_urls=[]):
+    # STRATEGY: Fetch a buffer of extra results (e.g., 5 extra) 
+    # so we have backups if the top ones were already visited.
+    search_buffer = 5
+    CONFIG["maxResults"] = top_k + search_buffer
+    
     print("🔥 Launching Browser Engine...")
-    final_ans = ""
+    
+    # List to store text results
+    cleaned_results = []
     
     async with async_playwright() as p:
-        # Launch browser
+        # Launch options
         browser_args = {"headless": False}
         if CONFIG["dynamicProxy"]:
             browser_args["proxy"] = {"server": CONFIG["dynamicProxy"]}
-            
+
         browser = await p.chromium.launch(**browser_args)
-        
-        # Create a context
         context = await browser.new_context()
         
-        # --- FIXED STEALTH LOGIC ---
-        # 1. Instantiate the class
+        # Apply Stealth
         stealth = Stealth() 
-        # 2. Apply it to the context
         await stealth.apply_stealth_async(context) 
-        # ---------------------------
 
         try:
-            # 1. Search
-            urls = await get_duckduckgo_results(search_query, context)
-
-            # 2. Scrape
-            for url in urls:
-                delay = random_delay()
-                await sleep(delay)
+            # 1. Search (Fetching extra results)
+            raw_urls = await get_duckduckgo_results(search_query, context)
+            
+            # 2. FILTERING LOGIC
+            # Select only unique URLs up to the requested top_k
+            urls_to_scrape = []
+            for url in raw_urls:
+                if url not in already_searched_urls:
+                    urls_to_scrape.append(url)
+                    # Add to master list immediately to prevent duplicates in this same run
+                    already_searched_urls.append(url)
                 
-                html = await fetch_with_playwright(url, context)
-                if html:
-                    cleaned_text = parse_and_clean_html(html, url)
-                    if cleaned_text:
-                        final_ans += cleaned_text
-                        final_ans += "\n"
-        
+                # Stop once we have enough unique URLs
+                if len(urls_to_scrape) >= top_k:
+                    break
+            
+            if not urls_to_scrape:
+                print("⚠️ All found URLs were already visited. Skipping scrape.")
+                return ""
+
+            # 3. Scrape IN PARALLEL (Speed Boost)
+            print(f"⚡ Scraping {len(urls_to_scrape)} new pages concurrently...")
+            
+            # Create a list of tasks (one for each URL)
+            tasks = []
+            for url in urls_to_scrape:
+                # Add random delay per task to avoid instant burst detection
+                task = scrape_single_url(url, context)
+                tasks.append(task)
+            
+            # Run all tasks at the same time
+            results = await asyncio.gather(*tasks)
+            
+            # Filter out None results
+            cleaned_results = [r for r in results if r]
+
         finally:
             print("🛑 Closing Browser Engine...")
             await context.close()
             await browser.close()
             
+    # Join all results into one string
+    final_ans = "\n".join(cleaned_results)
     print(f"\n✨ Job Complete. Captured {len(final_ans)} chars.")
     return final_ans
 
+# Helper to handle individual scraping with delay
+async def scrape_single_url(url, context):
+    delay = random_delay()
+    await sleep(delay)
+    
+    html = await fetch_with_playwright(url, context)
+    if html:
+        return parse_and_clean_html(html, url)
+    return None
 # s_query = input("search query: ")
 # t_k_input = input("top k: ")
 # t_k = int(t_k_input) if t_k_input.strip() else 3

@@ -95,7 +95,7 @@ def extract_json_from_response(content):
         print(f"[Warn] Parsing error: {e}")
         return []
 
-def search_query_generation(input_query,prompt_path):
+def modified_search_query_generation(input_query,prompt_path,before_formated_words,after_formated_words):
     print(f"{Colors.SYSTEM}--- Generating Search Queries (DeepSeek) ---{Colors.RESET}")
     
     # We use a smaller context for this step if possible to save time, 
@@ -117,12 +117,15 @@ def search_query_generation(input_query,prompt_path):
 
     with open(prompt_path,"r") as f:
         prompt_for_queries=f.read()
-    prompt_for_queries = prompt_for_queries.replace("{user_query}", input_query)
-
+    len1=len(before_formated_words)
+    len2=len(after_formated_words)
+    if len1!=len2:
+        raise ValueError("[Error] length of before formatted words array not equal to after formatted words array")
+    for i in range(len1):
+        prompt_for_queries = prompt_for_queries.replace(f"{{{before_formated_words[i]}}}", after_formated_words[i])
+    print("prompt:",prompt_for_queries)
     history.append({"role": "user", "content": prompt_for_queries})
-
     print(f"{Colors.SYSTEM}[Debug] Processing request...{Colors.RESET}")
-    
     queries = [input_query] # Default fallback
     final_queries={}
     try:
@@ -150,5 +153,12 @@ def search_query_generation(input_query,prompt_path):
     clean_memory(llm)
     
     return final_queries
+
+def search_query_generation(input_query):
+    prompt_path="../prompts/first_phase_search_query_generation.txt"
+    return modified_search_query_generation(input_query=input_query,
+                                     prompt_path=prompt_path,
+                                     before_formated_words=["user_query"],
+                                     after_formated_words=[input_query])
 # inp=input("enter search query:")
 # search_query_generation(inp,"../prompts/search_query_generation.txt")

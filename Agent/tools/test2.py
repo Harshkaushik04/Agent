@@ -4,18 +4,26 @@ from search_query_generation import search_query_generation
 import asyncio
 
 async def run():
-    search_query=input("search query:")
-    top_k=int(input("top k:"))
-    retrieve_n_results=int(input("retrieve n results:"))
-    chunk_size=int(input("chunk size:"))
-    chunk_overlap=int(input("chunk overlap:"))
-    search_queries=search_query_generation(search_query)
+    search_query="list of asmongold controversies over the years?"
+    # top_k=int(input("top k:"))
+    # retrieve_n_results=int(input("retrieve n results:"))
+    # chunk_size=int(input("chunk size:"))
+    # chunk_overlap=int(input("chunk overlap:"))
+    search_queries=search_query_generation(search_query,"../prompts/second_phase_search_query_generation.txt",
+                                           ["user_query","previous_search_queries","context"],[search_query,"""{
+  "questions": [
+    "ASMONGOLD trends 2025",
+    "ASMONGOLD controversies overview",
+    "ASMONGOLD issues recent",
+    "ASMONGOLD disputes 2025",
+    "ASMONGOLD disputes explained"
+  ]
+}
+"""],"""""")
     combined_context=""
-    already_searched_urls=[]
     for query in search_queries:
         context=await complete_search(search_query=query,
-                        top_k=top_k,
-                        already_searched_urls=already_searched_urls)
+                        top_k=top_k)
         combined_context+=context
         combined_context+="\n"
     top_docs=retrieval_from_context(search_query=search_query,
