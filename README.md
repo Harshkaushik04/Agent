@@ -50,4 +50,8 @@ next to complete:
 -apply websockets in it for better ui experience of text appearing
 -improve the prompts/architecture 
 -read rag papers,agentic ai architectures for improvements
--langchain.langgraph,mcp,rl fine tuning,etc
+-langchain,langgraph,mcp,rl fine tuning,etc
+18 dec 2025:
+-now task is to how normal,vector database would look like for state management in agent
+-so learn about agentic architectures or lang-graph, lang-chain,etc
+-convert backend into typescript too(Frontend converted to ts done)
