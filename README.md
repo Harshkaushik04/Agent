@@ -55,3 +55,5 @@ next to complete:
 -now task is to how normal,vector database would look like for state management in agent
 -so learn about agentic architectures or lang-graph, lang-chain,etc
 -convert backend into typescript too(Frontend converted to ts done)
+19 dec 2025:
+-read coala paper
