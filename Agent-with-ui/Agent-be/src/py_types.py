@@ -39,25 +39,29 @@ class EpisodicMemory(TypedDict):
     serial_number:int
     episodic_memory_description:str
 
+class FunctionToExecuete(TypedDict):
+    function_name:str
+    inputs:Dict[str,str]
+
+class ThingsToNode(TypedDict):
+    serial_number:int
+    description:str
+    content:str
+
 # 2. Main Working Memory Schema
 
 class WorkingMemorySchema(TypedDict):
     chat_history: List[ChatMessage]
-    
     previous_actions_and_logs: List[ActionLog]
-    
     final_goal: str
     current_goal: str
-    
-    # In your TS, this was a single object, not an array
-    rough_plan_to_reach_goal: PlanStep
-    
-    # In your TS, this was a single object
-    summaries: Summary
-    
+    rough_plan_to_reach_goal: List[PlanStep]
+    summaries: List[Summary]
     env_state: EnvState
-    
     episodic_memory_descriptions: List[EpisodicMemory]
+    function_to_execuete:FunctionToExecuete
+    things_to_note:List[ThingsToNode]
+    final_goal_completed:bool
 
 class Message():
     role: str

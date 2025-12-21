@@ -54,6 +54,15 @@ function Chat() {
       loadHistoryTitles()
       const ctx=useChat()
       const setExtraContent:React.Dispatch<React.SetStateAction<CustomTypes.ApprovalMessageType[]>>=ctx.setExtraContent
+      const local_token=localStorage.get("token")
+      if(!local_token){
+        throw new Error("[Chat.tsx]token not found")
+      }
+      const json_msg:CustomTypes.wsToBackend_connect={
+        eventType:"connect",
+        token:local_token
+      }
+      socket.send(JSON.stringify(json_msg))
       if(socket.readyState==WebSocket.OPEN){
           socket.onmessage=(msg:MessageEvent<string>)=>{
               const parsedMessage:CustomTypes.wsToFrontend=JSON.parse(msg.data)
@@ -79,7 +88,7 @@ function Chat() {
               }
           }
       }
-    },[])
+    },[socket])
 
   return (
     <div style={{color:"yellow",display:"flex"}}>

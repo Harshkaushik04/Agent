@@ -40,6 +40,7 @@ const episodicMemory=new mongoose.Schema<CustomTypes.episodicMemorySchemaType>({
 //to get back to same working memory after disconnected
 const workingMemory=new mongoose.Schema<CustomTypes.workingMemorySchemaType>({
     chat_history:[{
+        serial_number:Number,
         role:String,
         content:String
     }],
@@ -60,7 +61,7 @@ const workingMemory=new mongoose.Schema<CustomTypes.workingMemorySchemaType>({
     }],
     final_goal:String,
     current_goal:String,
-    rough_plan_to_reach_goal:{
+    rough_plan_to_reach_goal:[{
         serial_number:Number,
         description:String,
         function:String,
@@ -73,17 +74,22 @@ const workingMemory=new mongoose.Schema<CustomTypes.workingMemorySchemaType>({
             of:String
         },
         status:String
-    },
-    summaries:{
+    }],
+    summaries:[{
+        serial_number:Number,
         description:String,
         content:String,
         filter_words:[{type:String,defualt:[]}]
-    },
-    env_state:{
+    }],
+    env_state:[{
+        serial_number:Number,
         description:String,
         content:String
-    },
-    episodic_memory_descriptions:[{type:String,default:[]}]
+    }],
+    episodic_memory_descriptions:[{
+        serial_number:Number,
+        description:String
+    }]
 })
 
 history.index({username:1,model:1,title:1},{unique:true});

@@ -83,8 +83,8 @@ function authMiddleware(req:Request,res:Response,next:NextFunction){
 }
 
 app.post("/signup",async (req:CustomTypes.signUpRequest,res:Response<CustomTypes.signUpType>)=>{
-    let username=req.body.username;
-    let password=req.body.password;
+    let username:string=req.body.username;
+    let password:string=req.body.password;
     let user=await UserModel.findOne({
         username:username
     })
@@ -111,8 +111,8 @@ app.post("/signup",async (req:CustomTypes.signUpRequest,res:Response<CustomTypes
 })
 
 app.post("/login",async (req:CustomTypes.loginRequest,res:Response<CustomTypes.loginType>)=>{
-    let username=req.body.username;
-    let password=req.body.password;
+    let username:string=req.body.username;
+    let password:string=req.body.password;
     let user=await UserModel.findOne({
         username:username,
         password:password
@@ -149,8 +149,8 @@ app.use(authMiddleware);
 app.post("/load-history-titles",async (req:Request,res:Response)=>{
     const custom_res=res as Response<CustomTypes.loadHistoryTitlesType>
     const custom_req=req as CustomTypes.loadHistoryTitlesRequest
-    let username=custom_req.body.decrypted_username;
-    let model=custom_req.body.model;
+    let username:string=custom_req.body.decrypted_username;
+    let model:string=custom_req.body.model;
     let historyTitles=await HistoryModel.find({
         username:username,
         model:model
@@ -174,8 +174,8 @@ app.post("/load-new-chat",async (req:Request,res:Response)=>{
     console.log(`[load-new-chat] request recieved`)
     const custom_req=req as CustomTypes.loadNewChatRequest
     const custom_res=res as Response<CustomTypes.loadNewChatType>
-    let username=custom_req.body.decrypted_username;
-    let model=custom_req.body.model;
+    let username:string=custom_req.body.decrypted_username;
+    let model:string=custom_req.body.model;
     // PROXY_MODEL,username,PROXY_TITLE---->num_chats already created
     let chat_row=await HistoryModel.findOne({
         username:username,
@@ -204,9 +204,9 @@ app.get("/update-chat",async (req:Request,res:Response)=>{
     console.log(`[update-chat] entered request`)
     const custom_req=req as CustomTypes.updateChatRequest
     const custom_res=res as Response<CustomTypes.updateChatType>
-    let username=custom_req.body.decrypted_username;
-    let model=custom_req.headers.model;
-    let chat_number=custom_req.headers.chat_number;
+    let username:string=custom_req.body.decrypted_username;
+    let model:string=custom_req.headers.model;
+    let chat_number:number=Number(custom_req.headers.chat_number);
     let user=await HistoryModel.findOne({
         username:username,
         model:model,
@@ -223,9 +223,9 @@ app.get("/click-history",async (req:Request,res:Response)=>{
     console.log(`[click-history] entered request`)
     const custom_req=req as CustomTypes.clickHistoryRequest
     const custom_res=res as Response<CustomTypes.clickHistoryType>
-    let username=custom_req.body.decrypted_username;
-    let model=custom_req.headers.model;
-    let chat_number=custom_req.headers.chat_number;
+    let username:string=custom_req.body.decrypted_username;
+    let model:string=custom_req.headers.model;
+    let chat_number:number=Number(custom_req.headers.chat_number);
     console.log(`[click-history]username:${username} model:${model} title:title${chat_number}`)
     let user=await HistoryModel.findOne({
         username:username,
@@ -243,9 +243,9 @@ app.delete("/delete-chat",async (req:Request,res:Response)=>{
     console.log(`[delete-chat] entered request`)
     const custom_req=req as CustomTypes.deleteChatRequest
     const custom_res=res as Response<CustomTypes.deleteChatType>
-    let username=custom_req.body.decrypted_username;
-    let model=custom_req.headers.model;
-    let chat_number=custom_req.headers.chat_number;
+    let username:string=custom_req.body.decrypted_username;
+    let model:string=custom_req.headers.model;
+    let chat_number:number=Number(custom_req.headers.chat_number);
     await HistoryModel.deleteOne({
         username:username,
         model:model,
@@ -261,20 +261,93 @@ app.post("/send-message",async (req:Request,res:Response)=>{
     console.log(`[send-message]request arrived`)
     const custom_req=req as CustomTypes.sendMessageRequest
     const custom_res=res as Response<CustomTypes.sendMessageType>
-    let username=custom_req.body.decrypted_username;
-    let user_message=custom_req.body.message;
-    let model=custom_req.body.model;
-    let chat_number=custom_req.body.chat_number;
-    const resp=await axios.post<CustomTypes.generateModelType>("http://localhost:5000/generate-model",{
-
+    let username:string=custom_req.body.decrypted_username;
+    let user_message:string=custom_req.body.message;
+    let model:string=custom_req.body.model;
+    let chat_number:number=Number(custom_req.body.chat_number);
+    let state:CustomTypes.workingMemorySchemaType=initialiseWorkingMemory(user_message)
+    const foundWs:WebSocket|undefined=usernameToWebSocket.get(username)
+    if(!foundWs){
+        throw new Error("[server.ts] websocket not connected till now!! => connect message not received?")
+    }
+    //to complete: implementation of feedback,approval by user
+    const resp=await axios.post<CustomTypes.stateObjectType>("http://localhost:5000/generate-working-memory",{
+        state:state
     })
-    // await runPython(username,model,chat_number,user_message);
+    state=resp.data.state
+    while(!state.final_goal_completed){
+        let resp1=await axios.post<CustomTypes.resoningResponseType>("http://localhost:5000/reasoning",{
+            state:state
+        })
+        let before_think=resp1.data.before_think
+        let stateUpdateObj=resp1.data.stateUpdationObject
+        updateStateWithBeforeThink(before_think)
+        updateState(stateUpdateObj)
+        let resp2=await axios.post<CustomTypes.execueteResponseType>("http://localhost:5000/execuete",{
+            state:state,
+            model:model,
+            chat_number:chat_number
+        })
+        let log=resp2.data.log
+        stateUpdateObj=resp2.data.stateUpdationObject
+        updateState(stateUpdateObj)
+        let resp3=await axios.post<CustomTypes.makeLogResponseType>("http://localhost:5000/make-log",{
+            state:state,
+            log:log
+        })
+        stateUpdateObj=resp3.data.stateUpdationObject
+        updateState(stateUpdateObj)
+        let resp4=await axios.post<CustomTypes.updateWorkingMemoryResponseType>("http://localhost:5000/update-working-memory",{
+            state:state
+        })
+        stateUpdateObj=resp4.data.stateUpdationObject
+        updateState(stateUpdateObj)
+    }
+    //generate-working-memory
+    //while-loop-start{
+    //reasoning
+    //execuete
+    //make-log
+    //update-working-memory
+    //while-loop-end}
+    // const resp=await axios.post<CustomTypes.generateModelType>("http://localhost:5000/generate-model",{
+
+    // })
     return custom_res.json({
         valid:true
     })
 })
 
-function initialiseWorkingMemory(){
+function initialiseWorkingMemory(user_message:string):CustomTypes.workingMemorySchemaType{
+    const state:CustomTypes.workingMemorySchemaType={
+        chat_history:[{
+            serial_number:0,
+            role:"user",
+            content:user_message
+        }],
+        previous_actions_and_logs:[],
+        final_goal:user_message,
+        current_goal:"reasoning to make a plan",
+        rough_plan_to_reach_goal:[],
+        summaries:[],
+        env_state:[],
+        episodic_memory_descriptions:[],
+        current_function_to_execute:{
+            funcation_name:"",
+            inputs:{}
+        },
+        things_to_note:[],
+        final_goal_completed:false
+    }
+    return state
+}
+
+//to complete
+function updateState(state_updation_object:CustomTypes.stateUpdationType[]){
+    
+}
+
+function updateStateWithBeforeThink(before_think:string){
 
 }
 

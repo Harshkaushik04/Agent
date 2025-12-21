@@ -161,54 +161,89 @@ export type episodicMemorySchemaType={
     }]
 }
 
+export type chatHistoryType={
+    serial_number:number,
+    role:string,
+    content:string
+}
+
+export type addPreviousActionsAndLogsType={
+    serial_number:number,
+    description:string,
+    function_name:string,
+    inputs:{
+        [key:string]:string
+    },
+    outputs:{
+        [key:string]:string
+    },
+    log:string,
+    filter_words:string[]
+}
+
+export type roughPlanToReachGoalType={
+    serial_number:number,
+    description:string,
+    function_name:string,
+    inputs:{
+        [key:string]:string
+    },
+    brief_expected_outputs:{
+        [key:string]:string
+    },
+    status:string
+}
+
+export type summariesType={
+    serial_number:number,
+    description:string,
+    content:string,
+    filter_words:string[]
+}
+
+export type envStateType={
+    serial_number:number,
+    description:string,
+    content:string
+}
+
+export type episodicMemoryDescriptionsType={
+    serial_number:number,
+    description:string
+}
+
+export type currentFunctionToExecueteType={
+    funcation_name:string,
+    inputs:{
+        [key:string]:string
+    }
+}
+
+export type thingsToNoteType={
+    serial_number:number,
+    description:string,
+    content:string
+}
+
+export type anyUpdateType=chatHistoryType|addPreviousActionsAndLogsType|roughPlanToReachGoalType|summariesType|
+envStateType|episodicMemoryDescriptionsType|currentFunctionToExecueteType|thingsToNoteType
+
+export type anyFieldType="chat_history"|"previous_actions_and_logs"|"final_goal"|"current_goal"|
+"rough_plan_to_reach_goal"|"summaries"|"env_state"|"episodic_memory_descriptions"|
+"current_function_to_execuete"|"things_to_note"
+
 export type workingMemorySchemaType={
-    chat_history:[{
-        serial_number:number,
-        role:string,
-        content:string
-    }],
-    previous_actions_and_logs:[{
-        serial_number:number,
-        description:string,
-        function:string,
-        inputs:{
-            [key:string]:string
-        },
-        outputs:{
-            [key:string]:string
-        },
-        log:string,
-        filter_words:string[]
-    }],
+    chat_history:chatHistoryType[],
+    previous_actions_and_logs:addPreviousActionsAndLogsType[],
     final_goal:string,
     current_goal:string,
-    rough_plan_to_reach_goal:{
-        serial_number:number,
-        description:string,
-        function:string,
-        inputs:{
-            [key:string]:string
-        },
-        brief_expected_outputs:{
-            [key:string]:string
-        },
-        status:string
-    },
-    summaries:{
-        serial_number:number,
-        description:string,
-        content:string,
-        filter_words:string[]
-    },
-    env_state:{
-        serial_number:number,
-        description:string,
-        content:string
-    },
-    episodic_memory_descriptions:[{
-        serial_number:number,
-        description:string
-    }]
+    rough_plan_to_reach_goal:roughPlanToReachGoalType[],
+    summaries:summariesType[],
+    env_state:envStateType[],
+    episodic_memory_descriptions:episodicMemoryDescriptionsType[],
+    current_function_to_execute:currentFunctionToExecueteType,
+    things_to_note:thingsToNoteType[],
+    final_goal_completed:boolean
 }
 
 export type Message={
@@ -222,14 +257,14 @@ export type generateModelRequest=Request<{},{},{
     working_memory:workingMemorySchemaType
 }>
 
-export type i_generateModelType={
-    valid:true,
-    full_response: string,
-    before_think: string,
-    after_think: string
-}
 
-export type generateModelType=i_generateModelType|invalidResponseType
+//generate-working-memory
+//while-loop-start{
+//reasoning
+//execuete
+//make-log
+//update-working-memory
+//while-loop-end}
 
 export type wsToFrontend_approval={ 
     eventType:"approval",
@@ -246,4 +281,55 @@ export type wsToBackend_approval={
     message:string,
     token:string
 }
-export type wsToBackend=wsToBackend_approval
+export type wsToBackend_connect={
+  eventType:"connect",
+  token:string
+}
+export type wsToBackend=wsToBackend_approval|wsToBackend_connect
+
+//state updation 
+// for fields function_to_execuete,current_goal,final_goal => serial_number=0
+export type deleteAnyType={
+    updateType:"delete",
+    field:string,
+    serial_number:number
+}
+
+export type addAnyType={
+    updateType:"add",
+    field:anyFieldType,
+    updated:anyUpdateType
+}
+
+export type updateAnyType={
+    updateType:"update",
+    field:anyFieldType,
+    serial_number:number,
+    updated:anyUpdateType
+}
+
+export type stateUpdationType=deleteAnyType|addAnyType|updateAnyType
+export type stateObjectType={
+    state:workingMemorySchemaType
+}
+export type stateUpdationObjectType={
+    stateUpdationObject:stateUpdationType[]
+}
+
+export type resoningResponseType={
+    before_think:string,
+    stateUpdationObject:stateUpdationType[]
+}
+
+export type execueteResponseType={
+    log:string,
+    stateUpdationObject:stateUpdationType[]
+}
+
+export type makeLogResponseType={
+    stateUpdationObject:stateUpdationType[]
+}
+
+export type updateWorkingMemoryResponseType={
+    stateUpdationObject:stateUpdationType[]
+}

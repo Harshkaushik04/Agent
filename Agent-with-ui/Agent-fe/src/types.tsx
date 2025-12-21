@@ -157,4 +157,9 @@ export type wsToBackend_approval={
     message:string,
     token:string
 }
-export type wsToBackend=wsToBackend_approval
+
+export type wsToBackend_connect={
+  eventType:"connect",
+  token:string
+}
+export type wsToBackend=wsToBackend_approval|wsToBackend_connect
