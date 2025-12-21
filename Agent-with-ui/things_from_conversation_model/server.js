@@ -35,35 +35,6 @@ function authMiddleware(req,res,next){
         }
     }
 }
-async function runPython(username,model,chat_number,user_message){
-    let response={};
-    const PythonPromise=new Promise((resolve,reject)=>{
-        console.log("[runPython function] entered pythonPromise")
-        const py=spawn("python3",["-u",
-            "-W","ignore",
-            "run_model.py",
-            "--username",JSON.stringify(username),
-            "--model",JSON.stringify(model),
-            "--chat_number",JSON.stringify(chat_number),
-            "--user_message",JSON.stringify(user_message)]);
-        py.stdout.on("data", (data) => {
-            // console.log(data.toString());
-            process.stdout.write(data.toString());
-        });
-        py.stderr.on("data",(data)=>{
-            response.error=data.toString();
-            console.error(`[PYTHON ERROR]: ${data.toString()}`);
-        })
-        py.on("close",(code)=>{
-            if(code!==0){
-                response.error="Python crashed!";
-            }
-            else resolve()
-        })
-    })
-    await PythonPromise;
-    let raw_output="";
-}
 
 app.post("/signup",async (req,res)=>{
     let username=req.body.username;

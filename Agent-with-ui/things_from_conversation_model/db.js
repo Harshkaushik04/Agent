@@ -6,7 +6,7 @@ const MONGO_URL="mongodb://localhost:27017/ConversationModel"
 export async function connectDB(){
     mongoose.connect(MONGO_URL);
 }
-
+ // PROXY_MODEL,username,PROXY_TITLE---->num_chats
 const history=new mongoose.Schema({
     username:String,
     model:String,

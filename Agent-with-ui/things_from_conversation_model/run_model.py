@@ -2,6 +2,7 @@ from llama_cpp import Llama
 import json, argparse, sys
 from pymongo import MongoClient
 from dotenv import load_dotenv
+from model import run_model
 import os
 
 load_dotenv()  
@@ -53,33 +54,12 @@ def convert_history_to_prompt(history):
     return prompt
 
 def main():
-    print(f"[run_model.py] Loading model {model}...")
-    try:
-        llm = Llama(
-            model_path=MODEL_PATH,
-            n_gpu_layers=GPU_LAYERS,
-            n_ctx=CONTEXT_SIZE,
-            n_batch=BATCH_SIZE,
-            verbose=False,
-            chat_format="chatml"
-        )
-    except Exception as e:
-        print(f"Error loading model: {e}")
-        return "", "", ""
-
     # Fetch History
     old_history = HistoryModel.find_one({
         "username": username,
         "model": model,
         "title": f"title{chat_number}"
     })
-
-    ld_history = HistoryModel.find_one({
-        "username": username,
-        "model": model,
-        "title": f"title{chat_number}"
-    })
-
     history = []
     if old_history and "messages" in old_history:
         for msg in old_history["messages"]:
@@ -103,62 +83,8 @@ def main():
                     "role": role,
                     "content": content
                 })
-
-    # Append the current new message
-    history.append({"role":"system","content":"start thinking with <think> tag and stop thinking with </think> tag ,after that give the actual answer"})
-    history.append({"role": "user", "content": user_message})
-    print(f"[run-model]history:{history}")
-    raw_prompt=convert_history_to_prompt(history)
-
-    # --- ADD THIS DEBUGGING BLOCK ---
-    prompt_tokens = len(llm.tokenize(raw_prompt.encode('utf-8')))
-    print(f"[DEBUG] Prompt Tokens: {prompt_tokens}")
-    print(f"[DEBUG] Context Size (n_ctx): {llm.n_ctx()}")
-    
-    available_tokens = llm.n_ctx() - prompt_tokens
-    print(f"[DEBUG] Available for generation: {available_tokens}")
-
-    if available_tokens < 500:
-        print("[WARNING] Your history is too long! The model has no space to think.")
-    # --------------------------------
-
-    print("prompt:",raw_prompt)
-    # Stream Generation
-    stream = llm.create_completion(
-        prompt=raw_prompt,
-        temperature=0.6,
-        max_tokens=13000,
-        stream=True,
-        stop=["<|im_end|>"]
-    )
-    full_response = ""
-    
-    # 1. Stream the raw content to stdout
-    # UPDATED: 'create_completion' uses chunk["choices"][0]["text"]
-    for chunk in stream:
-        content = chunk["choices"][0]["text"]
-        print(content, end="", flush=True)
-        full_response += content
-
-    # 2. Post-Process Splitting (Logic remains the same)
-    before_think = ""
-    after_think = ""
-    
-    closing_tag = "</think>"
-    
-    if closing_tag in full_response:
-        # If tag exists, split normally
-        parts = full_response.split(closing_tag, 1)
-        
-        # Remove the opening <think> tag if it exists to keep DB clean
-        before_think = parts[0].replace("<think>", "").strip() 
-        after_think = parts[1].strip()
-    else:
-        # If no think tag, assume it's a standard answer
-        before_think = ""
-        after_think = full_response
-
-    return full_response, before_think, after_think
+    print(f"[run_model.py] Loading model {model}...")
+    return run_model(MODEL_PATH,user_message)
 
 full_response, before_think, after_think = main()
 
