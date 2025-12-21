@@ -57,3 +57,9 @@ next to complete:
 -convert backend into typescript too(Frontend converted to ts done)
 19 dec 2025:
 -read coala paper
+20 dec 2025:
+to do on immediate basis:
+-server.js->server.ts ,update types.ts.db.js->db.ts
+-update db.ts
+-write agent loop
+-write prompting strategies
