@@ -18,6 +18,7 @@ after that revert back to Agent project where make tools
 
 conversation-model:
 -can add jwt token in every user sent thing which server is relieing on like model,char number,etc:will do later
+
 9 dec 2025:
 things to improve:
 include vector database for rag in conversation model app, learn more about react to make code more readable
@@ -51,15 +52,31 @@ next to complete:
 -improve the prompts/architecture 
 -read rag papers,agentic ai architectures for improvements
 -langchain,langgraph,mcp,rl fine tuning,etc
+
 18 dec 2025:
 -now task is to how normal,vector database would look like for state management in agent
 -so learn about agentic architectures or lang-graph, lang-chain,etc
 -convert backend into typescript too(Frontend converted to ts done)
+
 19 dec 2025:
 -read coala paper
+
 20 dec 2025:
 to do on immediate basis:
--server.js->server.ts ,update types.ts.db.js->db.ts
+-server.js->server.ts ,update types.ts db.js->db.ts
 -update db.ts
 -write agent loop
+-write prompting strategies
+
+21 dec 2025:
+completed: 
+-server.js->server.ts,db.js->db.ts
+-updated types.ts,types.tsx,py_types.py for lots of types
+-wrote basic prototype of agent loop: some 2-3 functions remaining
+-implemented websockets for communication with ts server for giving approval,feedback=>though feedback loop in agentic loop is remaining
+
+to be done further:
+-2-3 functions in server.ts
+-approval,feedback loop in agentic loop
+-write fast api server routes which are not completed
 -write prompting strategies
