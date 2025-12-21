@@ -7,7 +7,7 @@ function Signup() {
   const {username,setUsername,password,setPassword,Navigate}=useSignUp()
   const {divRef,getDivRefCurrent}=useHtmlDivRef()
   let err_ref=divRef
-  let err_ref_current=getDivRefCurrent()
+  let err_ref_current:HTMLDivElement
   async function handleSubmit(e:React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const res=await axios.post<CustomTypes.signUpType>("http://localhost:3000/signup",{
@@ -22,6 +22,7 @@ function Signup() {
     }
   }
   useEffect(()=>{
+    err_ref_current=getDivRefCurrent()
     err_ref_current.style.display="none";
   },[])
 

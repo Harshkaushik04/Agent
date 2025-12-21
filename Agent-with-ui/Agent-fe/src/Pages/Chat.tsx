@@ -4,9 +4,12 @@ import axios from "axios"
 import { useChat } from "../hooks/useChat";
 import * as CustomTypes from '../types'
 import { useHtmlTextAreaRef } from "../hooks/useHtmlTextAreaRef";
+import { useWebSocket } from "../hooks/useWebSocket";
+import { useRef } from "react";
 
 function Chat() {
     const ctx=useChat()
+    const socket=useWebSocket()
     const Navigate=ctx.Navigate
     const setHistoryTitles=ctx.setHistoryTitles
     const historyTitles=ctx.historyTitles
@@ -49,6 +52,33 @@ function Chat() {
     }
     useEffect(()=>{
       loadHistoryTitles()
+      const ctx=useChat()
+      const setExtraContent:React.Dispatch<React.SetStateAction<CustomTypes.ApprovalMessageType[]>>=ctx.setExtraContent
+      if(socket.readyState==WebSocket.OPEN){
+          socket.onmessage=(msg:MessageEvent<string>)=>{
+              const parsedMessage:CustomTypes.wsToFrontend=JSON.parse(msg.data)
+              const eventType:string=parsedMessage.eventType
+              const message:string=parsedMessage.message
+              if(eventType=="approval"){
+                  setExtraContent((prev:CustomTypes.ApprovalMessageType[])=>{
+                    return [...prev,{
+                      content:message,
+                      isDone:false,
+                      approved:false
+                    }]
+                  })
+              }
+              else if(eventType=="showOutput"){
+                setExtraContent((prev:CustomTypes.ApprovalMessageType[])=>{
+                  return [...prev,{
+                    content:message,
+                    isDone:true,
+                    approved:true
+                  }]
+                })
+              }
+          }
+      }
     },[])
 
   return (
@@ -65,6 +95,8 @@ function Chat() {
 }
 
 function ScrollBoxWithContentAndSearchBar({ width1 = 300, height1 = "100vh", width2,height2,content}:CustomTypes.mainBarType) {
+  const ctx=useChat()
+  const extraContent:CustomTypes.ApprovalMessageType[]=ctx.extraContent
   return (
     <div style={{
       // border: "1px solid #ccc"
@@ -81,7 +113,7 @@ function ScrollBoxWithContentAndSearchBar({ width1 = 300, height1 = "100vh", wid
         // overflowY: "scroll" 
       }}
     >
-      <ChatRenderer messages={content}/>
+      <ChatRenderer messages={content} extraContent={extraContent}/>
     </div>
     <div style={{
       display:"flex",
@@ -220,7 +252,47 @@ function ClickableBox({ title,color }:CustomTypes.boxType) {
   );
 }
 
-function ChatRenderer({ messages }:CustomTypes.chatMessagesType) {
+function ChatRenderer({ messages}:CustomTypes.chatMessagesType) {
+  const input_ref=useRef<HTMLInputElement|null>(null)
+  const ctx=useChat()
+  const extraContent=ctx.extraContent
+  const setExtraContent=ctx.setExtraContent
+  async function sendMessage(){
+    setExtraContent((prev:CustomTypes.ApprovalMessageType[])=>{
+      const allExceptLast = prev.slice(0, -1);
+      const last=prev.at(-1)
+      if(!last){
+        throw new Error("[Chat.tsx] extraContent array is empty")
+      }
+      last.isDone=true
+      if(!input_ref.current){
+        throw new Error("[Chat.tsx] input_ref.current is null")
+      }
+      if(input_ref.current.value=="yes"){
+        last.approved=true
+      }
+      return [...allExceptLast,last]
+    })
+    const socket:WebSocket=useWebSocket()
+    if(socket.readyState==WebSocket.OPEN){
+      const local_token=localStorage.getItem("token")
+      if(!local_token){
+        throw new Error("[Chat.tsx]token not found in local Storage")
+      }
+      let json_message:CustomTypes.wsToBackend_approval={
+        eventType:"approval",
+        message:"no",
+        token:local_token
+      }
+      if(!input_ref.current){
+        throw new Error("[Chat.tsx] input_ref.current is null")
+      }
+      if(input_ref.current.value=="yes"){
+        json_message.message="yes"
+      }
+      socket.send(JSON.stringify(json_message))
+    }
+  }
   return (
       <div style={{ fontFamily: "monospace", padding: "10px" }}>
           {messages?.map((msg, index) => (
@@ -257,6 +329,15 @@ function ChatRenderer({ messages }:CustomTypes.chatMessagesType) {
                   )}
 
               </div>
+          ))}
+          {extraContent?.map((msg,index)=>(
+            <div key={index}>
+              <div style={{color:"pink"}}>{msg.content}</div>
+              ({!msg.isDone})&&(<div><input ref={input_ref} placeholder="approve?"></input></div>
+                                <div><button onClick={async ()=>{await sendMessage()}}>Send</button></div>)
+              ({msg.approved}&&(<div style={{color:"orange"}}>APPROVED</div>))
+              ({!msg.approved}&&(<div style={{color:"orange"}}>DISAPPROVED</div>))
+            </div>
           ))}
       </div>
   );

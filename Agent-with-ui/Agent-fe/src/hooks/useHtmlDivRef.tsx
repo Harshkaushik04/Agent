@@ -5,7 +5,7 @@ export function useHtmlDivRef():CustomTypes.divRefHookType{
     function getDivRefCurrent():HTMLDivElement{
         const divRefCurrent=divRef.current
         if(!divRefCurrent){
-            throw new Error("text area ref is null")
+            throw new Error("div ref is null")
         }
         return divRefCurrent
     }

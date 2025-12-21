@@ -7,6 +7,7 @@ import './App.css'
 import { ChatContextProvider } from './context/ChatContextProvider.js'
 import { LoginContextProvider } from './context/LoginContextProvider.js'
 import { SignUpContextProvider } from './context/SignUpContextProvider.js'
+import { WebSocketContextProvider } from './context/WebSocketContextProvider.js'
 
 function App() {
   return (
@@ -16,7 +17,7 @@ function App() {
           <Route path="/" element={<Landing/>}/>
           <Route path="/login" element={<LoginContextProvider><Login/></LoginContextProvider>}/>
           <Route path="/signup" element={<SignUpContextProvider><Signup/></SignUpContextProvider>}/>
-          <Route path="/chat" element={<ChatContextProvider><Chat/></ChatContextProvider>}/>
+          <Route path="/chat" element={<WebSocketContextProvider><ChatContextProvider><Chat/></ChatContextProvider></WebSocketContextProvider>}/>
         </Routes>
       </BrowserRouter>
     </div>

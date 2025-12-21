@@ -10,6 +10,11 @@ export type messageType={
         after_think:String,
         timestamp:Date
 }
+export type ApprovalMessageType={
+  content:string,
+  isDone:boolean,
+  approved:boolean
+}
 
 //frontend component types
 export interface userType{
@@ -38,7 +43,8 @@ export interface boxType{
   color:string
 }
 export interface chatMessagesType{
-  messages:messageType[]
+  messages:messageType[],
+  extraContent:ApprovalMessageType[]
 }
 
 export interface searchBarType{
@@ -58,6 +64,8 @@ export interface chatContextType{
     setHistoryTitles: React.Dispatch<React.SetStateAction<string[]>>, 
     historyChat: messageType[],
     setHistoryChat: React.Dispatch<React.SetStateAction<messageType[]>>,
+    extraContent:ApprovalMessageType[],
+    setExtraContent:React.Dispatch<React.SetStateAction<ApprovalMessageType[]>>,
     Navigate: NavigateFunction
 }
 
@@ -133,3 +141,20 @@ export type updateChatType=clickHistoryType
 export type sendMessageType=i_sendMessageType|invalidResponseType
 export type loginType=i_loginType
 export type signUpType=i_signUpType
+
+export type wsToFrontend_approval={ 
+    eventType:"approval",
+    message:string
+}
+export type wsToFrontend_showOutput={
+    eventType:"showOutput",
+    message:string
+}
+
+export type wsToFrontend=wsToFrontend_approval|wsToFrontend_showOutput
+export type wsToBackend_approval={
+    eventType:"approval",
+    message:string,
+    token:string
+}
+export type wsToBackend=wsToBackend_approval

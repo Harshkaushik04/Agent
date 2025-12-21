@@ -7,7 +7,7 @@ function Login() {
   const {username,setUsername,password,setPassword,Navigate}=useLogin()
   const {divRef,getDivRefCurrent}=useHtmlDivRef()
   let err_ref=divRef
-  let err_ref_current=getDivRefCurrent()
+  let err_ref_current:HTMLDivElement
   async function handleSubmit(e:React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const res=await axios.post<CustomTypes.loginType>("http://localhost:3000/login",{
@@ -26,6 +26,7 @@ function Login() {
     }
   }
   useEffect(()=>{
+    err_ref_current=getDivRefCurrent()
     err_ref_current.style.display="none";
   },[])
 
