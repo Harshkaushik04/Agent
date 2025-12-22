@@ -69,7 +69,23 @@ class Message():
     before_think: Optional[str] = ""
     after_think: Optional[str] = ""
 
-class GenerateRequest(TypedDict):
-    working_memory:WorkingMemorySchema
+class GenerateWorkingMemoryRequest(TypedDict):
+    state:WorkingMemorySchema
 
-__all__=[WorkingMemorySchema,ChatMessage,ActionLog,PlanStep,Summary,Message,GenerateRequest]
+class ReasoningRequest(TypedDict):
+    state:WorkingMemorySchema
+
+class ExecueteRequest(TypedDict):
+    state:WorkingMemorySchema
+    model:str
+    chat_number:int
+
+class MakeLogRequest(TypedDict):
+    state:WorkingMemorySchema
+    log:str
+
+class UpdateWorkingMemoryRequest(TypedDict):
+    state:WorkingMemorySchema
+
+__all__=[WorkingMemorySchema,ChatMessage,ActionLog,PlanStep,Summary,Message,GenerateWorkingMemoryRequest,
+         ReasoningRequest,ExecueteRequest,MakeLogRequest,UpdateWorkingMemoryRequest]

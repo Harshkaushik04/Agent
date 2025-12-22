@@ -7,11 +7,19 @@ import dotenv from "dotenv";
 import axios from "axios"
 import WebSocket,{WebSocketServer} from "ws";
 import * as CustomTypes from './types.js'
+import path from 'path'
+import { fileURLToPath } from "url";
+import { json } from "stream/consumers";
 
 const wss=new WebSocketServer({port:8080})
 let usernameToWebSocket=new Map<string,WebSocket>()
 let webSocketToUsername=new Map<WebSocket,string>()
-dotenv.config();
+// Recreate __dirname for ES Modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({path:path.resolve(__dirname,'../../.env')})
+// Now your existing line will work
+// console.log(`dotenv location:${path.resolve(__dirname, '../../.env')}`)
 connectDB();
 let app=express();
 
@@ -19,16 +27,35 @@ const JWT_SECRET="randomnum1";
 const PORT=3000;
 
 let pendingApprovals=new Map<string,(choice:boolean)=>void>
-async function requestApproval(ws: WebSocket, username: string, message:string): Promise<boolean> {
+async function requestApprovalStateAndUpdation(ws: WebSocket, username: string, state:CustomTypes.workingMemorySchemaType,
+    stateUpdationObject:CustomTypes.stateUpdationType[]
+): Promise<boolean> {
+    // const state_string=JSON.stringify(state)
+    // const state_updation_string=JSON.stringify(stateUpdationObject)
     ws.send(JSON.stringify({
         eventType: "approval",
-        message:message
+        state:state,
+        stateUpdationObject:stateUpdationObject
     }));
     return new Promise((resolve) => {
         pendingApprovals.set(username, resolve);
     });
 }
 
+async function requestApprovalState(ws: WebSocket, username: string, state:CustomTypes.workingMemorySchemaType): Promise<boolean> {
+    // const state_string=JSON.stringify(state)
+    // const state_updation_string=JSON.stringify(stateUpdationObject)
+    ws.send(JSON.stringify({
+        eventType: "approval",
+        state:state
+    }));
+    return new Promise((resolve) => {
+        pendingApprovals.set(username, resolve);
+    });
+}
+
+// function sendOutput(ws:WebSocket,username:string)
+let approved=false
 wss.on("connection",function(ws:WebSocket){
     console.log("new user connected")
     ws.on("message",(msg:WebSocket.RawData)=>{
@@ -50,7 +77,11 @@ wss.on("connection",function(ws:WebSocket){
             if(!resolve){
                 throw new Error(`[server.ts] No pending approvals from username ${username}`)
             }
-            resolve(json_message.message=="yes")
+            if(json_message.approval=="yes"){
+                approved=true
+            }
+            else approved=false
+            resolve(json_message.approval=="yes")
             pendingApprovals.delete(username)
         }
     })
@@ -62,20 +93,27 @@ app.use(cors({
 }));
 
 function authMiddleware(req:Request,res:Response,next:NextFunction){
-    const custom_req=req as CustomTypes.afterLoginRequest
-    const custom_res=res as Response<CustomTypes.anyResponseType>
-    if(!custom_req.headers.token){
-        return custom_res.json({
+    // const custom_req=req as CustomTypes.afterLoginRequest
+    // const custom_res=res as Response<CustomTypes.anyResponseType>
+    if(!req.headers.token){
+        console.log(`hi:`,req.headers.token)
+        return res.json({
             valid:false
         });
     }
     else{
         try {
-            const decryptedData = jwt.verify(custom_req.headers.token as string, JWT_SECRET) as CustomTypes.jwtDecrypted;
-            req.body.decrypted_username = decryptedData.username; 
+            const rawDecryptedData = jwt.verify(req.headers.token as string, JWT_SECRET);
+            const decryptedData=rawDecryptedData as CustomTypes.jwtDecrypted;
+            //@ts-ignore
+            req.decrypted_username = decryptedData.username; 
+            //@ts-ignore
+            console.log(`req.decrypted_username:`,req.decrypted_username)
             next();
         } catch (err) {
-            return custom_res.json({
+            console.log("err:",err)
+            console.log(`hi2`)
+            return res.json({
                 valid:false
             });
         }
@@ -121,13 +159,14 @@ app.post("/login",async (req:CustomTypes.loginRequest,res:Response<CustomTypes.l
         valid:false
     })}
     // PROXY_MODEL,username,PROXY_TITLE---->num_chats already created
+    console.log(`title:${process.env.PROXY_TITLE}`)
     let chat_row=await HistoryModel.findOne({
         username:username,
         model:process.env.PROXY_MODEL,
         title:process.env.PROXY_TITLE
     })
     if(!chat_row){
-        throw new Error("chat number row in HistoryModel does not exist")
+        throw new Error("[server.ts] chat number row in HistoryModel does not exist")
     }
     let num_chats:number=0;
     num_chats=Number(chat_row.messages[0].content);
@@ -147,10 +186,11 @@ app.post("/login",async (req:CustomTypes.loginRequest,res:Response<CustomTypes.l
 
 app.use(authMiddleware);
 app.post("/load-history-titles",async (req:Request,res:Response)=>{
-    const custom_res=res as Response<CustomTypes.loadHistoryTitlesType>
-    const custom_req=req as CustomTypes.loadHistoryTitlesRequest
-    let username:string=custom_req.body.decrypted_username;
-    let model:string=custom_req.body.model;
+    // const custom_res=res as Response<CustomTypes.loadHistoryTitlesType>
+    // const custom_req=req as CustomTypes.loadHistoryTitlesRequest
+    //@ts-ignore
+    let username:string=req.decrypted_username;
+    let model:string=req.body.model;
     let historyTitles=await HistoryModel.find({
         username:username,
         model:model
@@ -164,7 +204,7 @@ app.post("/load-history-titles",async (req:Request,res:Response)=>{
         }
         titlesList.push(custom_title);
     }
-    return custom_res.json({
+    return res.json({
         valid:true,
         titles:titlesList
     })
@@ -172,10 +212,11 @@ app.post("/load-history-titles",async (req:Request,res:Response)=>{
 
 app.post("/load-new-chat",async (req:Request,res:Response)=>{
     console.log(`[load-new-chat] request recieved`)
-    const custom_req=req as CustomTypes.loadNewChatRequest
-    const custom_res=res as Response<CustomTypes.loadNewChatType>
-    let username:string=custom_req.body.decrypted_username;
-    let model:string=custom_req.body.model;
+    // const custom_req=req as CustomTypes.loadNewChatRequest
+    // const custom_res=res as Response<CustomTypes.loadNewChatType>
+    //@ts-ignore
+    let username:string=req.decrypted_username;
+    let model:string=req.body.model;
     // PROXY_MODEL,username,PROXY_TITLE---->num_chats already created
     let chat_row=await HistoryModel.findOne({
         username:username,
@@ -194,7 +235,7 @@ app.post("/load-new-chat",async (req:Request,res:Response)=>{
     chat_row.messages[0].content = String(num_chats + 1);
     console.log(`[load-new-chat] chat_row.messages[0].content:${chat_row.messages[0].content}`)
     await chat_row.save();
-    return custom_res.json({
+    return res.json({
         valid:true,
         chat_number:num_chats+1
     })
@@ -202,18 +243,19 @@ app.post("/load-new-chat",async (req:Request,res:Response)=>{
 
 app.get("/update-chat",async (req:Request,res:Response)=>{
     console.log(`[update-chat] entered request`)
-    const custom_req=req as CustomTypes.updateChatRequest
-    const custom_res=res as Response<CustomTypes.updateChatType>
-    let username:string=custom_req.body.decrypted_username;
-    let model:string=custom_req.headers.model;
-    let chat_number:number=Number(custom_req.headers.chat_number);
+    // const custom_req=req as CustomTypes.updateChatRequest
+    // const custom_res=res as Response<CustomTypes.updateChatType>
+    //@ts-ignore
+    let username:string=req.decrypted_username;
+    let model:string=String(req.headers.model);
+    let chat_number:number=Number(req.headers.chat_number);
     let user=await HistoryModel.findOne({
         username:username,
         model:model,
         title:`title${chat_number}`
     })
     console.log(`[update-chat] username:${username},model:${model},title:title${chat_number}`)
-    return custom_res.json({
+    return res.json({
         valid:true,
         value_json:(user?.messages ? user.messages : [])
     })
@@ -221,11 +263,12 @@ app.get("/update-chat",async (req:Request,res:Response)=>{
 
 app.get("/click-history",async (req:Request,res:Response)=>{
     console.log(`[click-history] entered request`)
-    const custom_req=req as CustomTypes.clickHistoryRequest
-    const custom_res=res as Response<CustomTypes.clickHistoryType>
-    let username:string=custom_req.body.decrypted_username;
-    let model:string=custom_req.headers.model;
-    let chat_number:number=Number(custom_req.headers.chat_number);
+    // const custom_req=req as CustomTypes.clickHistoryRequest
+    // const custom_res=res as Response<CustomTypes.clickHistoryType>
+    //@ts-ignore
+    let username:string=req.decrypted_username;
+    let model:string=String(req.headers.model);
+    let chat_number:number=Number(req.headers.chat_number);
     console.log(`[click-history]username:${username} model:${model} title:title${chat_number}`)
     let user=await HistoryModel.findOne({
         username:username,
@@ -233,7 +276,7 @@ app.get("/click-history",async (req:Request,res:Response)=>{
         title:`title${chat_number}`
     })
     console.log(`user.messages:${user?.messages}`)
-    return custom_res.json({
+    return res.json({
         valid:true,
         value_json:(user?.messages ? user.messages:[])
     })
@@ -241,17 +284,18 @@ app.get("/click-history",async (req:Request,res:Response)=>{
 
 app.delete("/delete-chat",async (req:Request,res:Response)=>{
     console.log(`[delete-chat] entered request`)
-    const custom_req=req as CustomTypes.deleteChatRequest
-    const custom_res=res as Response<CustomTypes.deleteChatType>
-    let username:string=custom_req.body.decrypted_username;
-    let model:string=custom_req.headers.model;
-    let chat_number:number=Number(custom_req.headers.chat_number);
+    // const custom_req=req as CustomTypes.deleteChatRequest
+    // const custom_res=res as Response<CustomTypes.deleteChatType>
+    //@ts-ignore
+    let username:string=req.decrypted_username;
+    let model:string=String(req.headers.model);
+    let chat_number:number=Number(req.headers.chat_number);
     await HistoryModel.deleteOne({
         username:username,
         model:model,
         title:`title${chat_number}`
     })
-    return custom_res.json({
+    return res.json({
         valid:true,
         chat_number:-1
     })
@@ -259,49 +303,72 @@ app.delete("/delete-chat",async (req:Request,res:Response)=>{
 
 app.post("/send-message",async (req:Request,res:Response)=>{
     console.log(`[send-message]request arrived`)
-    const custom_req=req as CustomTypes.sendMessageRequest
-    const custom_res=res as Response<CustomTypes.sendMessageType>
-    let username:string=custom_req.body.decrypted_username;
-    let user_message:string=custom_req.body.message;
-    let model:string=custom_req.body.model;
-    let chat_number:number=Number(custom_req.body.chat_number);
+    // const custom_req=req as CustomTypes.sendMessageRequest
+    // const custom_res=res as Response<CustomTypes.sendMessageType>
+    //@ts-ignore
+    let username:string=req.decrypted_username;
+    let user_message:string=req.body.message;
+    let model:string=req.body.model;
+    let chat_number:number=Number(req.body.chat_number);
     let state:CustomTypes.workingMemorySchemaType=initialiseWorkingMemory(user_message)
     const foundWs:WebSocket|undefined=usernameToWebSocket.get(username)
     if(!foundWs){
         throw new Error("[server.ts] websocket not connected till now!! => connect message not received?")
     }
     //to complete: implementation of feedback,approval by user
-    const resp=await axios.post<CustomTypes.stateObjectType>("http://localhost:5000/generate-working-memory",{
-        state:state
-    })
+    let resp:Axios.AxiosXHR<CustomTypes.stateObjectType>
+    while(!approved){
+        resp=await axios.post<CustomTypes.stateObjectType>("http://localhost:5000/generate-working-memory",{
+            state:state
+        })
+        await requestApprovalState(foundWs,username,state)
+    }
+    //@ts-ignore
     state=resp.data.state
+    approved=false
+    let stateUpdateObj:CustomTypes.stateUpdationType[]=[]
+    let log=""
     while(!state.final_goal_completed){
-        let resp1=await axios.post<CustomTypes.resoningResponseType>("http://localhost:5000/reasoning",{
-            state:state
-        })
-        let before_think=resp1.data.before_think
-        let stateUpdateObj=resp1.data.stateUpdationObject
-        updateStateWithBeforeThink(before_think)
-        updateState(stateUpdateObj)
-        let resp2=await axios.post<CustomTypes.execueteResponseType>("http://localhost:5000/execuete",{
-            state:state,
-            model:model,
-            chat_number:chat_number
-        })
-        let log=resp2.data.log
-        stateUpdateObj=resp2.data.stateUpdationObject
-        updateState(stateUpdateObj)
-        let resp3=await axios.post<CustomTypes.makeLogResponseType>("http://localhost:5000/make-log",{
-            state:state,
-            log:log
-        })
-        stateUpdateObj=resp3.data.stateUpdationObject
-        updateState(stateUpdateObj)
-        let resp4=await axios.post<CustomTypes.updateWorkingMemoryResponseType>("http://localhost:5000/update-working-memory",{
-            state:state
-        })
-        stateUpdateObj=resp4.data.stateUpdationObject
-        updateState(stateUpdateObj)
+        while(!approved){
+            let resp1=await axios.post<CustomTypes.resoningResponseType>("http://localhost:5000/reasoning",{
+                state:state
+            })
+            stateUpdateObj=resp1.data.stateUpdationObject
+            await requestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj)
+        }
+        updateState(state,stateUpdateObj)
+        approved=false
+        while(!approved){
+            let resp2=await axios.post<CustomTypes.execueteResponseType>("http://localhost:5000/execuete",{
+                state:state,
+                model:model,
+                chat_number:chat_number
+            })
+            log=resp2.data.log
+            stateUpdateObj=resp2.data.stateUpdationObject
+            await requestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj)
+        }
+        updateState(state,stateUpdateObj)
+        approved=false
+        while(!approved){
+            let resp3=await axios.post<CustomTypes.makeLogResponseType>("http://localhost:5000/make-log",{
+                state:state,
+                log:log
+            })
+            stateUpdateObj=resp3.data.stateUpdationObject
+            await requestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj)
+        }
+        updateState(state,stateUpdateObj)
+        approved=false
+        while(!approved){
+            let resp4=await axios.post<CustomTypes.updateWorkingMemoryResponseType>("http://localhost:5000/update-working-memory",{
+                state:state
+            })
+            stateUpdateObj=resp4.data.stateUpdationObject
+            await requestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj)
+        }
+        updateState(state,stateUpdateObj)
+        approved=false
     }
     //generate-working-memory
     //while-loop-start{
@@ -310,10 +377,7 @@ app.post("/send-message",async (req:Request,res:Response)=>{
     //make-log
     //update-working-memory
     //while-loop-end}
-    // const resp=await axios.post<CustomTypes.generateModelType>("http://localhost:5000/generate-model",{
-
-    // })
-    return custom_res.json({
+    return res.json({
         valid:true
     })
 })
@@ -332,7 +396,7 @@ function initialiseWorkingMemory(user_message:string):CustomTypes.workingMemoryS
         summaries:[],
         env_state:[],
         episodic_memory_descriptions:[],
-        current_function_to_execute:{
+        current_function_to_execuete:{
             funcation_name:"",
             inputs:{}
         },
@@ -341,14 +405,58 @@ function initialiseWorkingMemory(user_message:string):CustomTypes.workingMemoryS
     }
     return state
 }
-
-//to complete
-function updateState(state_updation_object:CustomTypes.stateUpdationType[]){
-    
+function isListFieldType(x: string): x is CustomTypes.listFieldType {
+  return CustomTypes.listFieldValues.includes(x as CustomTypes.listFieldType);
 }
-
-function updateStateWithBeforeThink(before_think:string){
-
+function isStringFieldType(x: string): x is CustomTypes.listFieldType {
+  return CustomTypes.stringFieldValues.includes(x as CustomTypes.stringFieldType);
+}
+//to complete
+function updateState(state:CustomTypes.workingMemorySchemaType,state_updation_object:CustomTypes.stateUpdationType[]){
+    for(const upd of state_updation_object){
+        if(upd.updateType=="delete"){
+            if (isListFieldType(upd.field)) {
+                const arr = state[upd.field];
+                if (!Array.isArray(arr)) {
+                    throw new Error(`Field ${upd.field} is not an array`);
+                }
+                arr.splice(upd.serial_number, 1);
+            }
+            else if (isStringFieldType(upd.field)) {
+                // @ts-ignore
+                state[upd.field] = "";
+            }
+        }
+        else if(upd.updateType=="add"){
+            if(isListFieldType(upd.field)){
+                const arr=state[upd.field]
+                if(!Array.isArray(arr)){
+                    throw new Error(`Field ${upd.field} is not an array`)
+                }
+                //@ts-ignore
+                arr.push(upd.updated)
+            }
+            else if(isStringFieldType(upd.field)){
+                //@ts-ignore
+                state[upd.field] = upd.updated
+            }
+        }
+        else if(upd.updateType=="update"){
+            if(isListFieldType(upd.field)){
+                const arr=state[upd.field]
+                if(!Array.isArray(arr)){
+                    throw new Error(`Field ${upd.field} is not an array`)
+                }
+                //@ts-ignore
+                arr[upd.serial_number]=upd.updated
+            }
+            else if(isStringFieldType(upd.field)){
+                //@ts-ignore
+                state[upd.field]=upd.updated
+            }
+        }
+    }
+    return state
 }
 
 app.listen(PORT,()=>{

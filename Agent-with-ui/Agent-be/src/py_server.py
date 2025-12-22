@@ -118,8 +118,8 @@ async def open_model_route():
     return {"status": "success", "message": "Model reloaded."}
 
 # --- GENERATE ROUTE (Updated with Safety Check) ---
-@app.post("/generate-model")
-async def generate_text(request:GenerateRequest):
+@app.post("/generate-working-memory")
+async def generate_text(request:GenerateWorkingMemoryRequest):
     global llm
     
     # 🛑 Safety Check
@@ -127,7 +127,7 @@ async def generate_text(request:GenerateRequest):
         return{
             "valid":False
         }
-    state=request.working_memory
+    state=request.state
     json_state=json.dumps(state)
     prompt = convert_history_to_prompt(request)
     
