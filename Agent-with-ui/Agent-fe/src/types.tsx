@@ -142,24 +142,199 @@ export type sendMessageType=i_sendMessageType|invalidResponseType
 export type loginType=i_loginType
 export type signUpType=i_signUpType
 
+
 export type wsToFrontend_approval={ 
     eventType:"approval",
-    message:string
+    state:workingMemorySchemaType,
+    stateUpdationObject?:stateUpdationType[],
+    message?:string
 }
 export type wsToFrontend_showOutput={
     eventType:"showOutput",
-    message:string
+    state?:workingMemorySchemaType,
+    stateUpdationObject?:stateUpdationType[],
+    message?:string
 }
 
 export type wsToFrontend=wsToFrontend_approval|wsToFrontend_showOutput
 export type wsToBackend_approval={
     eventType:"approval",
-    message:string,
+    approval:string,
+    feedback?:string,
     token:string
 }
-
 export type wsToBackend_connect={
   eventType:"connect",
   token:string
 }
 export type wsToBackend=wsToBackend_approval|wsToBackend_connect
+
+export type workingMemorySchemaType={
+    chat_history:chatHistoryType[],
+    previous_actions_and_logs:addPreviousActionsAndLogsType[],
+    final_goal:string,
+    current_goal:string,
+    rough_plan_to_reach_goal:roughPlanToReachGoalType[],
+    summaries:summariesType[],
+    env_state:envStateType[],
+    episodic_memory_descriptions:episodicMemoryDescriptionsType[],
+    current_function_to_execuete:currentFunctionToExecueteType,
+    things_to_note:thingsToNoteType[],
+    final_goal_completed:boolean
+}
+
+
+export type chatHistoryType={
+    serial_number:number,
+    role:string,
+    content:string
+}
+
+export type addPreviousActionsAndLogsType={
+    serial_number:number,
+    description:string,
+    function_name:string,
+    inputs:{
+        [key:string]:string
+    },
+    outputs:{
+        [key:string]:string
+    },
+    log:string,
+    filter_words:string[]
+}
+
+export type roughPlanToReachGoalType={
+    serial_number:number,
+    description:string,
+    function_name:string,
+    inputs:{
+        [key:string]:string
+    },
+    brief_expected_outputs:{
+        [key:string]:string
+    },
+    status:string
+}
+
+export type summariesType={
+    serial_number:number,
+    description:string,
+    content:string,
+    filter_words:string[]
+}
+
+export type envStateType={
+    serial_number:number,
+    description:string,
+    content:string
+}
+
+export type episodicMemoryDescriptionsType={
+    serial_number:number,
+    description:string
+}
+
+export type currentFunctionToExecueteType={
+    funcation_name:string,
+    inputs:{
+        [key:string]:string
+    }
+}
+
+export type thingsToNoteType={
+    serial_number:number,
+    description:string,
+    content:string
+}
+
+export type anyUpdateType=chatHistoryType|addPreviousActionsAndLogsType|roughPlanToReachGoalType|summariesType|
+envStateType|episodicMemoryDescriptionsType|currentFunctionToExecueteType|thingsToNoteType|string
+
+export type deleteAnyType={
+    updateType:"delete",
+    field:anyFieldType,
+    serial_number:number
+}
+
+export type addAnyType={
+    updateType:"add"
+}& anyPair
+
+export type updateAnyType={
+    updateType:"update",
+    serial_number:number,
+}& anyPair
+
+export type stateUpdationType=deleteAnyType|addAnyType|updateAnyType
+
+
+export const listFieldValues = [
+  "chat_history",
+  "previous_actions_and_logs",
+  "rough_plan_to_reach_goal",
+  "summaries",
+  "env_state",
+  "episodic_memory_descriptions",
+  "current_function_to_execuete",
+  "things_to_note",
+] as const;
+export type listFieldType = typeof listFieldValues[number];
+
+
+export const stringFieldValues =[
+    "final_goal",
+    "current_goal"
+] as const
+export type stringFieldType= typeof stringFieldValues[number]
+export type anyFieldType=listFieldType|stringFieldType
+
+export type chatHistoryPair={
+    field:"chat_history",
+    updated:chatHistoryType
+}
+
+export type PreviousActionsAndLogsPair={
+    field:"previous_actions_and_logs",
+    updated:addPreviousActionsAndLogsType
+}
+
+export type stringPair={
+    field:"current_goal"|"final_goal",
+    updated:string
+}
+
+export type roughPlanToReachGoalPair={
+    field:"rough_plan_to_reach_goal",
+    updated:roughPlanToReachGoalPair
+}
+
+export type summariesPair={
+    field:"summaries",
+    updated:summariesType
+}
+
+export type envStatePair={
+    field:"env_state",
+    updated:envStateType
+}
+
+export type episodicMemoryDescriptionsPair={
+    field:"episodic_memory_descriptions",
+    updated:episodicMemoryDescriptionsType
+}
+
+export type currentFunctionToExecuetePair={
+    field:"current_function_to_execuete",
+    updated:currentFunctionToExecuetePair
+}
+
+export type thingsToNotePair={
+    field:"things_to_note",
+    updated:thingsToNoteType
+}
+
+export type listPair=chatHistoryPair|PreviousActionsAndLogsPair|roughPlanToReachGoalPair|summariesPair|envStatePair|
+episodicMemoryDescriptionsPair|currentFunctionToExecuetePair|thingsToNotePair
+
+export type anyPair=listPair|stringPair

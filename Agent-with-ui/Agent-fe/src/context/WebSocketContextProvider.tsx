@@ -7,7 +7,7 @@ export function WebSocketContextProvider({children}:CustomTypes.props){
     useEffect(()=>{
         setSocket(new WebSocket("ws://localhost:8080"))
         return ()=>socket?.close()
-    },[socket])
+    },[])
     return(
         <WebSocketContext.Provider value={socket}>
             {children}

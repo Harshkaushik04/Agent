@@ -50,43 +50,62 @@ function Chat() {
         localStorage.removeItem("username");
         Navigate("/login");
     }
-    useEffect(()=>{
-      loadHistoryTitles()
-      const ctx=useChat()
-      const setExtraContent:React.Dispatch<React.SetStateAction<CustomTypes.ApprovalMessageType[]>>=ctx.setExtraContent
-      const local_token=localStorage.get("token")
+    function handleConnect(){
+      console.log("connected")
+      const local_token=localStorage.getItem("token")
       if(!local_token){
         throw new Error("[Chat.tsx]token not found")
       }
       const json_msg:CustomTypes.wsToBackend_connect={
-        eventType:"connect",
-        token:local_token
+          eventType:"connect",
+          token:local_token
+        }
+        socket?.send(JSON.stringify(json_msg))
+    }
+    useEffect(()=>{
+      loadHistoryTitles()
+      const setExtraContent:React.Dispatch<React.SetStateAction<CustomTypes.ApprovalMessageType[]>>=ctx.setExtraContent
+      const local_token=localStorage.getItem("token")
+      if(!local_token){
+        throw new Error("[Chat.tsx]token not found")
       }
-      socket.send(JSON.stringify(json_msg))
-      if(socket.readyState==WebSocket.OPEN){
-          socket.onmessage=(msg:MessageEvent<string>)=>{
+      if(socket && socket!.readyState==WebSocket.OPEN){
+          socket!.onmessage=(msg:MessageEvent<string>)=>{
               const parsedMessage:CustomTypes.wsToFrontend=JSON.parse(msg.data)
-              const eventType:string=parsedMessage.eventType
-              const message:string=parsedMessage.message
-              if(eventType=="approval"){
+              if(parsedMessage.eventType=="approval"){
+                  const state:CustomTypes.workingMemorySchemaType=parsedMessage.state
+                  const stateUpdationObject=parsedMessage.stateUpdationObject
+                  let content=""
+                  if(!stateUpdationObject){
+                    content=JSON.stringify([state])  
+                  }
+                  else{
+                    content=JSON.stringify([state,stateUpdationObject])
+                  }
                   setExtraContent((prev:CustomTypes.ApprovalMessageType[])=>{
                     return [...prev,{
-                      content:message,
+                      content:content,
                       isDone:false,
                       approved:false
                     }]
                   })
               }
-              else if(eventType=="showOutput"){
-                setExtraContent((prev:CustomTypes.ApprovalMessageType[])=>{
-                  return [...prev,{
-                    content:message,
-                    isDone:true,
-                    approved:true
-                  }]
-                })
-              }
+              // else if(parsedMessage.eventType=="showOutput"){
+              //   setExtraContent((prev:CustomTypes.ApprovalMessageType[])=>{
+              //     return [...prev,{
+              //       content:message,
+              //       isDone:true,
+              //       approved:true
+              //     }]
+              //   })
+              // }
           }
+      }
+      if(socket && socket!.readyState==WebSocket.OPEN){
+        handleConnect()
+      }
+      else{
+        socket?.addEventListener("open",handleConnect)
       }
     },[socket])
 
@@ -263,6 +282,7 @@ function ClickableBox({ title,color }:CustomTypes.boxType) {
 
 function ChatRenderer({ messages}:CustomTypes.chatMessagesType) {
   const input_ref=useRef<HTMLInputElement|null>(null)
+  const feedback_ref=useRef<HTMLInputElement|null>(null)
   const ctx=useChat()
   const extraContent=ctx.extraContent
   const setExtraContent=ctx.setExtraContent
@@ -282,24 +302,26 @@ function ChatRenderer({ messages}:CustomTypes.chatMessagesType) {
       }
       return [...allExceptLast,last]
     })
-    const socket:WebSocket=useWebSocket()
-    if(socket.readyState==WebSocket.OPEN){
+    const socket=useWebSocket()
+
+    if(socket && socket!.readyState==WebSocket.OPEN){
       const local_token=localStorage.getItem("token")
       if(!local_token){
         throw new Error("[Chat.tsx]token not found in local Storage")
       }
-      let json_message:CustomTypes.wsToBackend_approval={
-        eventType:"approval",
-        message:"no",
-        token:local_token
-      }
       if(!input_ref.current){
         throw new Error("[Chat.tsx] input_ref.current is null")
       }
-      if(input_ref.current.value=="yes"){
-        json_message.message="yes"
+      if(!feedback_ref.current){
+        throw new Error("[Chat.tsx] feedback_ref.current is null")
       }
-      socket.send(JSON.stringify(json_message))
+      let json_message:CustomTypes.wsToBackend_approval={
+        eventType:"approval",
+        approval:input_ref.current.value,
+        feedback:feedback_ref.current.value,
+        token:local_token
+      }
+      socket?.send(JSON.stringify(json_message))
     }
   }
   return (
@@ -343,6 +365,7 @@ function ChatRenderer({ messages}:CustomTypes.chatMessagesType) {
             <div key={index}>
               <div style={{color:"pink"}}>{msg.content}</div>
               ({!msg.isDone})&&(<div><input ref={input_ref} placeholder="approve?"></input></div>
+                                <div><input ref={feedback_ref} placeholder="feedback?"></input></div>
                                 <div><button onClick={async ()=>{await sendMessage()}}>Send</button></div>)
               ({msg.approved}&&(<div style={{color:"orange"}}>APPROVED</div>))
               ({!msg.approved}&&(<div style={{color:"orange"}}>DISAPPROVED</div>))
