@@ -213,7 +213,7 @@ export type episodicMemoryDescriptionsType={
 }
 
 export type currentFunctionToExecueteType={
-    funcation_name:string,
+    function_name:string,
     inputs:{
         [key:string]:string
     }

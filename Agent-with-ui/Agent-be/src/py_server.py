@@ -19,8 +19,9 @@ except ImportError:
 from llama_cpp import Llama, GGML_TYPE_Q8_0
 
 # --- CONFIGURATION ---
-MODEL_PATH = "/home/harsh/RAG/Agent-with-ui/models/DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf"
-N_CTX = 100000
+MODEL_PATH = "/home/harsh/RAG/models/DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf"
+N_CTX = 80000
+TEMPERATURE=0.6
 HOST = "0.0.0.0"
 PORT = 5000
 
@@ -78,6 +79,21 @@ def load_model():
     )
     print("✅ Model loaded and ready!")
 
+def make_generate_working_memory_prompt():
+    return ""
+
+def make_reasoning_prompt():
+    return ""
+
+def make_execuete_prompt():
+    return ""
+
+def make_log_prompt():
+    return ""
+
+def make_update_working_memory_prompt():
+    return ""
+
 # --- EXISTING HELPERS ---
 def convert_history_to_prompt(history: List[Message]) -> str:
     prompt = ""
@@ -119,7 +135,7 @@ async def open_model_route():
 
 # --- GENERATE ROUTE (Updated with Safety Check) ---
 @app.post("/generate-working-memory")
-async def generate_text(request:GenerateWorkingMemoryRequest):
+async def generate_working_memory(request:GenerateWorkingMemoryRequest):
     global llm
     
     # 🛑 Safety Check
@@ -128,16 +144,16 @@ async def generate_text(request:GenerateWorkingMemoryRequest):
             "valid":False
         }
     state=request.state
-    json_state=json.dumps(state)
-    prompt = convert_history_to_prompt(request)
+    json_state=state.model_dump_json()
+    prompt = make_generate_working_memory_prompt()
     
-    print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")
+    # print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")
 
     # Stream to stdout for debugging
     stream = llm(
         prompt,
-        max_tokens=request.max_tokens,
-        temperature=request.temperature,
+        max_tokens=N_CTX,
+        temperature=TEMPERATURE,
         stop=["<|im_end|>"],
         stream=True
     )
@@ -152,12 +168,181 @@ async def generate_text(request:GenerateWorkingMemoryRequest):
     print("\n------------------------------------------------\n")
     
     thought, answer = parse_deepseek_response(full_text)
-    
+    try:
+        output_state=json.loads(answer)
+    except json.JSONDecodeError as e:
+        print(f"json parsing error in [generate_working_memory]:\n {e}")
     return {
-        "valid":True,
-        "full_response": full_text,
-        "before_think": thought,
-        "after_think": answer
+        "state":output_state
+    }
+
+@app.post("/reasoning")
+async def reasoning(request:ReasoningRequest):
+    global llm
+    
+    # 🛑 Safety Check
+    if llm is None:
+        return{
+            "valid":False
+        }
+    state=request.state
+    json_state=json.dumps(state)
+    prompt = make_reasoning_prompt()
+    
+    # print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")
+
+    # Stream to stdout for debugging
+    stream = llm(
+        prompt,
+        max_tokens=N_CTX,
+        temperature=TEMPERATURE,
+        stop=["<|im_end|>"],
+        stream=True
+    )
+
+    full_text = ""
+    for output in stream:
+        token = output['choices'][0]['text']
+        sys.stdout.write(token)
+        sys.stdout.flush()
+        full_text += token
+
+    print("\n------------------------------------------------\n")
+    
+    thought, answer = parse_deepseek_response(full_text)
+    try:
+        output_state_updation_object=json.loads(answer)
+    except json.JSONDecodeError as e:
+        print(f"json parsing error in [generate_working_memory]:\n {e}")
+    return {
+        "stateUpdationObject":output_state_updation_object
+    }
+
+
+@app.post("/execuete")
+async def execuete(request:ExecueteRequest):
+    global llm
+    
+    # 🛑 Safety Check
+    if llm is None:
+        return{
+            "valid":False
+        }
+    state=request.state
+    json_state=json.dumps(state)
+    prompt = make_reasoning_prompt()
+    
+    # print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")
+
+    # Stream to stdout for debugging
+    stream = llm(
+        prompt,
+        max_tokens=N_CTX,
+        temperature=TEMPERATURE,
+        stop=["<|im_end|>"],
+        stream=True
+    )
+
+    full_text = ""
+    for output in stream:
+        token = output['choices'][0]['text']
+        sys.stdout.write(token)
+        sys.stdout.flush()
+        full_text += token
+
+    print("\n------------------------------------------------\n")
+    
+    thought, answer = parse_deepseek_response(full_text)
+    try:
+        output_state_updation_object=json.loads(answer)
+    except json.JSONDecodeError as e:
+        print(f"json parsing error in [generate_working_memory]:\n {e}")
+    return {
+        "stateUpdationObject":output_state_updation_object
+    }
+
+@app.post("/make-log")
+async def make_log(request:MakeLogRequest):
+    global llm
+    
+    # 🛑 Safety Check
+    if llm is None:
+        return{
+            "valid":False
+        }
+    state=request.state
+    json_state=json.dumps(state)
+    prompt = make_log_prompt()
+    
+    # print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")
+
+    # Stream to stdout for debugging
+    stream = llm(
+        prompt,
+        max_tokens=N_CTX,
+        temperature=TEMPERATURE,
+        stop=["<|im_end|>"],
+        stream=True
+    )
+
+    full_text = ""
+    for output in stream:
+        token = output['choices'][0]['text']
+        sys.stdout.write(token)
+        sys.stdout.flush()
+        full_text += token
+
+    print("\n------------------------------------------------\n")
+    
+    thought, answer = parse_deepseek_response(full_text)
+    try:
+        output_state_updation_object=json.loads(answer)
+    except json.JSONDecodeError as e:
+        print(f"json parsing error in [generate_working_memory]:\n {e}")
+    return {
+        "stateUpdationObject":output_state_updation_object
+    }
+
+@app.post("/update-working-memory")
+async def execuete(request:UpdateWorkingMemoryRequest):
+    global llm
+    
+    # 🛑 Safety Check
+    if llm is None:
+        return{
+            "valid":False
+        }
+    state=request.state
+    json_state=json.dumps(state)
+    prompt = make_update_working_memory_prompt()
+    
+    # print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")
+
+    # Stream to stdout for debugging
+    stream = llm(
+        prompt,
+        max_tokens=N_CTX,
+        temperature=TEMPERATURE,
+        stop=["<|im_end|>"],
+        stream=True
+    )
+
+    full_text = ""
+    for output in stream:
+        token = output['choices'][0]['text']
+        sys.stdout.write(token)
+        sys.stdout.flush()
+        full_text += token
+
+    print("\n------------------------------------------------\n")
+    
+    thought, answer = parse_deepseek_response(full_text)
+    try:
+        output_state_updation_object=json.loads(answer)
+    except json.JSONDecodeError as e:
+        print(f"json parsing error in [generate_working_memory]:\n {e}")
+    return {
+        "stateUpdationObject":output_state_updation_object
     }
 
 if __name__ == "__main__":

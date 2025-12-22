@@ -14,6 +14,7 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import axios from "axios";
 import { WebSocketServer } from "ws";
+import * as CustomTypes from './types.js';
 import path from 'path';
 import { fileURLToPath } from "url";
 const wss = new WebSocketServer({ port: 8080 });
@@ -30,17 +31,36 @@ let app = express();
 const JWT_SECRET = "randomnum1";
 const PORT = 3000;
 let pendingApprovals = new Map;
-function requestApproval(ws, username, message) {
+function requestApprovalStateAndUpdation(ws, username, state, stateUpdationObject) {
     return __awaiter(this, void 0, void 0, function* () {
+        // const state_string=JSON.stringify(state)
+        // const state_updation_string=JSON.stringify(stateUpdationObject)
         ws.send(JSON.stringify({
             eventType: "approval",
-            message: message
+            state: state,
+            stateUpdationObject: stateUpdationObject
         }));
         return new Promise((resolve) => {
             pendingApprovals.set(username, resolve);
         });
     });
 }
+function requestApprovalState(ws, username, state) {
+    return __awaiter(this, void 0, void 0, function* () {
+        // const state_string=JSON.stringify(state)
+        // const state_updation_string=JSON.stringify(stateUpdationObject)
+        ws.send(JSON.stringify({
+            eventType: "approval",
+            state: state
+        }));
+        return new Promise((resolve) => {
+            pendingApprovals.set(username, resolve);
+        });
+    });
+}
+// function sendOutput(ws:WebSocket,username:string)
+let approved = false;
+let feedback = "";
 wss.on("connection", function (ws) {
     console.log("new user connected");
     ws.on("message", (msg) => {
@@ -63,7 +83,14 @@ wss.on("connection", function (ws) {
             if (!resolve) {
                 throw new Error(`[server.ts] No pending approvals from username ${username}`);
             }
-            resolve(json_message.message == "yes");
+            if (json_message.approval == "yes") {
+                approved = true;
+            }
+            else {
+                approved = false;
+                feedback = (json_message === null || json_message === void 0 ? void 0 : json_message.feedback) ? json_message.feedback : "";
+            }
+            resolve(json_message.approval == "yes");
             pendingApprovals.delete(username);
         }
     });
@@ -291,37 +318,77 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
         throw new Error("[server.ts] websocket not connected till now!! => connect message not received?");
     }
     //to complete: implementation of feedback,approval by user
-    const resp = yield axios.post("http://localhost:5000/generate-working-memory", {
-        state: state
-    });
-    state = resp.data.state;
-    while (!state.final_goal_completed) {
-        let resp1 = yield axios.post("http://localhost:5000/reasoning", {
-            state: state
-        });
-        let before_think = resp1.data.before_think;
-        let stateUpdateObj = resp1.data.stateUpdationObject;
-        updateStateWithBeforeThink(before_think);
-        updateState(stateUpdateObj);
-        let resp2 = yield axios.post("http://localhost:5000/execuete", {
+    let resp;
+    while (!approved) {
+        feedback = "";
+        resp = yield axios.post("http://localhost:5000/generate-working-memory", {
             state: state,
+            feedback: feedback,
             model: model,
             chat_number: chat_number
         });
-        let log = resp2.data.log;
-        stateUpdateObj = resp2.data.stateUpdationObject;
-        updateState(stateUpdateObj);
-        let resp3 = yield axios.post("http://localhost:5000/make-log", {
-            state: state,
-            log: log
-        });
-        stateUpdateObj = resp3.data.stateUpdationObject;
-        updateState(stateUpdateObj);
-        let resp4 = yield axios.post("http://localhost:5000/update-working-memory", {
-            state: state
-        });
-        stateUpdateObj = resp4.data.stateUpdationObject;
-        updateState(stateUpdateObj);
+        yield requestApprovalState(foundWs, username, state);
+    }
+    //@ts-ignore
+    state = resp.data.state;
+    approved = false;
+    let stateUpdateObj = [];
+    let log = "";
+    while (!state.final_goal_completed) {
+        while (!approved) {
+            feedback = "";
+            let resp1 = yield axios.post("http://localhost:5000/reasoning", {
+                state: state,
+                feedback: feedback,
+                model: model,
+                chat_number: chat_number
+            });
+            stateUpdateObj = resp1.data.stateUpdationObject;
+            yield requestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj);
+        }
+        updateState(state, stateUpdateObj);
+        approved = false;
+        while (!approved) {
+            feedback = "";
+            let resp2 = yield axios.post("http://localhost:5000/execuete", {
+                state: state,
+                model: model,
+                chat_number: chat_number,
+                feedback: feedback
+            });
+            log = resp2.data.log;
+            stateUpdateObj = resp2.data.stateUpdationObject;
+            yield requestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj);
+        }
+        updateState(state, stateUpdateObj);
+        approved = false;
+        while (!approved) {
+            feedback = "";
+            let resp3 = yield axios.post("http://localhost:5000/make-log", {
+                state: state,
+                log: log,
+                feedback: feedback,
+                model: model,
+                chat_number: chat_number
+            });
+            stateUpdateObj = resp3.data.stateUpdationObject;
+            yield requestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj);
+        }
+        updateState(state, stateUpdateObj);
+        approved = false;
+        while (!approved) {
+            feedback = "";
+            let resp4 = yield axios.post("http://localhost:5000/update-working-memory", {
+                state: state,
+                feedback: feedback,
+                model: model,
+                chat_number: chat_number
+            });
+            stateUpdateObj = resp4.data.stateUpdationObject;
+            yield requestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj);
+        }
+        updateState(state, stateUpdateObj);
+        approved = false;
     }
     //generate-working-memory
     //while-loop-start{
@@ -330,8 +397,6 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
     //make-log
     //update-working-memory
     //while-loop-end}
-    // const resp=await axios.post<CustomTypes.generateModelType>("http://localhost:5000/generate-model",{
-    // })
     return res.json({
         valid: true
     });
@@ -350,8 +415,8 @@ function initialiseWorkingMemory(user_message) {
         summaries: [],
         env_state: [],
         episodic_memory_descriptions: [],
-        current_function_to_execute: {
-            funcation_name: "",
+        current_function_to_execuete: {
+            function_name: "",
             inputs: {}
         },
         things_to_note: [],
@@ -359,10 +424,58 @@ function initialiseWorkingMemory(user_message) {
     };
     return state;
 }
-//to complete
-function updateState(state_updation_object) {
+function isListFieldType(x) {
+    return CustomTypes.listFieldValues.includes(x);
 }
-function updateStateWithBeforeThink(before_think) {
+function isStringFieldType(x) {
+    return CustomTypes.stringFieldValues.includes(x);
+}
+//to complete
+function updateState(state, state_updation_object) {
+    for (const upd of state_updation_object) {
+        if (upd.updateType == "delete") {
+            if (isListFieldType(upd.field)) {
+                const arr = state[upd.field];
+                if (!Array.isArray(arr)) {
+                    throw new Error(`Field ${upd.field} is not an array`);
+                }
+                arr.splice(upd.serial_number, 1);
+            }
+            else if (isStringFieldType(upd.field)) {
+                // @ts-ignore
+                state[upd.field] = "";
+            }
+        }
+        else if (upd.updateType == "add") {
+            if (isListFieldType(upd.field)) {
+                const arr = state[upd.field];
+                if (!Array.isArray(arr)) {
+                    throw new Error(`Field ${upd.field} is not an array`);
+                }
+                //@ts-ignore
+                arr.push(upd.updated);
+            }
+            else if (isStringFieldType(upd.field)) {
+                //@ts-ignore
+                state[upd.field] = upd.updated;
+            }
+        }
+        else if (upd.updateType == "update") {
+            if (isListFieldType(upd.field)) {
+                const arr = state[upd.field];
+                if (!Array.isArray(arr)) {
+                    throw new Error(`Field ${upd.field} is not an array`);
+                }
+                //@ts-ignore
+                arr[upd.serial_number] = upd.updated;
+            }
+            else if (isStringFieldType(upd.field)) {
+                //@ts-ignore
+                state[upd.field] = upd.updated;
+            }
+        }
+    }
+    return state;
 }
 app.listen(PORT, () => {
     console.log(`server listening at port ${PORT}`);

@@ -56,6 +56,7 @@ async function requestApprovalState(ws: WebSocket, username: string, state:Custo
 
 // function sendOutput(ws:WebSocket,username:string)
 let approved=false
+let feedback=""
 wss.on("connection",function(ws:WebSocket){
     console.log("new user connected")
     ws.on("message",(msg:WebSocket.RawData)=>{
@@ -80,7 +81,10 @@ wss.on("connection",function(ws:WebSocket){
             if(json_message.approval=="yes"){
                 approved=true
             }
-            else approved=false
+            else{
+                approved=false
+                feedback=json_message?.feedback?json_message.feedback:""
+            }
             resolve(json_message.approval=="yes")
             pendingApprovals.delete(username)
         }
@@ -318,8 +322,12 @@ app.post("/send-message",async (req:Request,res:Response)=>{
     //to complete: implementation of feedback,approval by user
     let resp:Axios.AxiosXHR<CustomTypes.stateObjectType>
     while(!approved){
+        feedback=""
         resp=await axios.post<CustomTypes.stateObjectType>("http://localhost:5000/generate-working-memory",{
-            state:state
+            state:state,
+            feedback:feedback,
+            model:model,
+            chat_number:chat_number
         })
         await requestApprovalState(foundWs,username,state)
     }
@@ -330,8 +338,12 @@ app.post("/send-message",async (req:Request,res:Response)=>{
     let log=""
     while(!state.final_goal_completed){
         while(!approved){
+            feedback=""
             let resp1=await axios.post<CustomTypes.resoningResponseType>("http://localhost:5000/reasoning",{
-                state:state
+                state:state,
+                feedback:feedback,
+                model:model,
+                chat_number:chat_number
             })
             stateUpdateObj=resp1.data.stateUpdationObject
             await requestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj)
@@ -339,10 +351,12 @@ app.post("/send-message",async (req:Request,res:Response)=>{
         updateState(state,stateUpdateObj)
         approved=false
         while(!approved){
+            feedback=""
             let resp2=await axios.post<CustomTypes.execueteResponseType>("http://localhost:5000/execuete",{
                 state:state,
                 model:model,
-                chat_number:chat_number
+                chat_number:chat_number,
+                feedback:feedback
             })
             log=resp2.data.log
             stateUpdateObj=resp2.data.stateUpdationObject
@@ -351,9 +365,13 @@ app.post("/send-message",async (req:Request,res:Response)=>{
         updateState(state,stateUpdateObj)
         approved=false
         while(!approved){
+            feedback=""
             let resp3=await axios.post<CustomTypes.makeLogResponseType>("http://localhost:5000/make-log",{
                 state:state,
-                log:log
+                log:log,
+                feedback:feedback,
+                model:model,
+                chat_number:chat_number
             })
             stateUpdateObj=resp3.data.stateUpdationObject
             await requestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj)
@@ -361,8 +379,12 @@ app.post("/send-message",async (req:Request,res:Response)=>{
         updateState(state,stateUpdateObj)
         approved=false
         while(!approved){
+            feedback=""
             let resp4=await axios.post<CustomTypes.updateWorkingMemoryResponseType>("http://localhost:5000/update-working-memory",{
-                state:state
+                state:state,
+                feedback:feedback,
+                model:model,
+                chat_number:chat_number
             })
             stateUpdateObj=resp4.data.stateUpdationObject
             await requestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj)
@@ -397,7 +419,7 @@ function initialiseWorkingMemory(user_message:string):CustomTypes.workingMemoryS
         env_state:[],
         episodic_memory_descriptions:[],
         current_function_to_execuete:{
-            funcation_name:"",
+            function_name:"",
             inputs:{}
         },
         things_to_note:[],

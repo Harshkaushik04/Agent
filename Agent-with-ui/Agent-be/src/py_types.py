@@ -1,65 +1,65 @@
 from typing import TypedDict, List, Dict,Optional
-
+from pydantic import BaseModel
 # 1. Define Sub-Types first for cleaner structure
 
-class ChatMessage(TypedDict):
+class ChatMessage(BaseModel):
     serial_number:int
     role: str
     content: str
 
-class ActionLog(TypedDict):
+class ActionLog(BaseModel):
     serial_number: int
     description: str
-    function: str
+    function_name: str
     inputs: Dict[str, str]   # Matches { [key:string]: string }
     outputs: Dict[str, str]
     log: str
     filter_words: List[str]
 
-class PlanStep(TypedDict):
+class PlanStep(BaseModel):
     serial_number: int
     description: str
-    function: str
+    function_name: str
     inputs: Dict[str, str]
     brief_expected_outputs: Dict[str, str]
     status: str
 
-class Summary(TypedDict):
+class Summary(BaseModel):
     serial_number:int
     description: str
     content: str
     filter_words: List[str]
 
-class EnvState(TypedDict):
+class EnvState(BaseModel):
     serial_number:int
     description: str
     content: str
 
-class EpisodicMemory(TypedDict):
+class EpisodicMemory(BaseModel):
     serial_number:int
-    episodic_memory_description:str
+    description:str
 
-class FunctionToExecuete(TypedDict):
+class CurrentFunctionToExecuete(BaseModel):
     function_name:str
     inputs:Dict[str,str]
 
-class ThingsToNode(TypedDict):
+class ThingsToNode(BaseModel):
     serial_number:int
     description:str
     content:str
 
 # 2. Main Working Memory Schema
 
-class WorkingMemorySchema(TypedDict):
+class WorkingMemorySchema(BaseModel):
     chat_history: List[ChatMessage]
     previous_actions_and_logs: List[ActionLog]
     final_goal: str
     current_goal: str
     rough_plan_to_reach_goal: List[PlanStep]
     summaries: List[Summary]
-    env_state: EnvState
+    env_state: List[EnvState]
     episodic_memory_descriptions: List[EpisodicMemory]
-    function_to_execuete:FunctionToExecuete
+    current_function_to_execuete:CurrentFunctionToExecuete
     things_to_note:List[ThingsToNode]
     final_goal_completed:bool
 
@@ -69,23 +69,34 @@ class Message():
     before_think: Optional[str] = ""
     after_think: Optional[str] = ""
 
-class GenerateWorkingMemoryRequest(TypedDict):
+class GenerateWorkingMemoryRequest(BaseModel):
     state:WorkingMemorySchema
-
-class ReasoningRequest(TypedDict):
-    state:WorkingMemorySchema
-
-class ExecueteRequest(TypedDict):
-    state:WorkingMemorySchema
+    feedback:str
     model:str
     chat_number:int
 
-class MakeLogRequest(TypedDict):
+ReasoningRequest=GenerateWorkingMemoryRequest
+ExecueteRequest=GenerateWorkingMemoryRequest
+
+class MakeLogRequest(BaseModel):
     state:WorkingMemorySchema
     log:str
+    feedback:str
+    model:str
+    chat_number:int
 
-class UpdateWorkingMemoryRequest(TypedDict):
-    state:WorkingMemorySchema
+UpdateWorkingMemoryRequest=GenerateWorkingMemoryRequest
 
-__all__=[WorkingMemorySchema,ChatMessage,ActionLog,PlanStep,Summary,Message,GenerateWorkingMemoryRequest,
-         ReasoningRequest,ExecueteRequest,MakeLogRequest,UpdateWorkingMemoryRequest]
+__all__ = [
+    "WorkingMemorySchema", 
+    "ChatMessage", 
+    "ActionLog", 
+    "PlanStep", 
+    "Summary", 
+    "Message", 
+    "GenerateWorkingMemoryRequest",
+    "ReasoningRequest", 
+    "ExecueteRequest", 
+    "MakeLogRequest", 
+    "UpdateWorkingMemoryRequest"
+]

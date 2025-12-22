@@ -97,7 +97,20 @@ const workingMemory = new mongoose.Schema({
     episodic_memory_descriptions: [{
             serial_number: Number,
             description: String
-        }]
+        }],
+    current_function_to_execuete: {
+        function_name: String,
+        inputs: {
+            type: Map,
+            of: String
+        }
+    },
+    things_to_note: {
+        serial_number: Number,
+        description: String,
+        content: String
+    },
+    final_goal_completed: String
 });
 history.index({ username: 1, model: 1, title: 1 }, { unique: true });
 episodicMemory.index({ username: 1, title: 1 }, { unique: true });
