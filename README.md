@@ -80,3 +80,8 @@ to be done further:
 -approval,feedback loop in agentic loop
 -write fast api server routes which are not completed
 -write prompting strategies
+
+22 dec 2025:
+remaining:
+-prompts
+-tools
