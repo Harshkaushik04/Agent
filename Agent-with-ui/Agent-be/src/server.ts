@@ -416,6 +416,7 @@ function initialiseWorkingMemory(user_message:string):CustomTypes.workingMemoryS
         current_goal:"reasoning to make a plan",
         rough_plan_to_reach_goal:[],
         summaries:[],
+        urls:[],
         env_state:[],
         episodic_memory_descriptions:[],
         current_function_to_execuete:{

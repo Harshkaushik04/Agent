@@ -29,6 +29,7 @@ class Summary(BaseModel):
     description: str
     content: str
     filter_words: List[str]
+Url=Summary
 
 class EnvState(BaseModel):
     serial_number:int
@@ -57,6 +58,7 @@ class WorkingMemorySchema(BaseModel):
     current_goal: str
     rough_plan_to_reach_goal: List[PlanStep]
     summaries: List[Summary]
+    urls:List[Url]
     env_state: List[EnvState]
     episodic_memory_descriptions: List[EpisodicMemory]
     current_function_to_execuete:CurrentFunctionToExecuete
@@ -93,6 +95,7 @@ __all__ = [
     "ActionLog", 
     "PlanStep", 
     "Summary", 
+    "Url",
     "Message", 
     "GenerateWorkingMemoryRequest",
     "ReasoningRequest", 

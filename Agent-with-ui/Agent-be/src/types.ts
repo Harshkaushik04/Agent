@@ -201,6 +201,13 @@ export type summariesType={
     filter_words:string[]
 }
 
+export type urlsType={
+    serial_number:number,
+    description:string,
+    content:string,
+    filter_words:string[]
+}
+
 export type envStateType={
     serial_number:number,
     description:string,
@@ -273,6 +280,11 @@ export type summariesPair={
     updated:summariesType
 }
 
+export type urlsPair={
+    field:"urls",
+    updated:urlsType
+}
+
 export type envStatePair={
     field:"env_state",
     updated:envStateType
@@ -304,6 +316,7 @@ export type workingMemorySchemaType={
     current_goal:string,
     rough_plan_to_reach_goal:roughPlanToReachGoalType[],
     summaries:summariesType[],
+    urls:urlsType[],
     env_state:envStateType[],
     episodic_memory_descriptions:episodicMemoryDescriptionsType[],
     current_function_to_execuete:currentFunctionToExecueteType,
