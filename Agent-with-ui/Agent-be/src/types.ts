@@ -58,14 +58,13 @@ export type loginType=i_loginType|invalidResponseType
 export type signUpType=i_signUpType
 export type anyResponseType=loadHistoryTitlesType|loadNewChatType|deleteChatType|clickHistoryType|updateChatType|sendMessageType|loginType|signUpType
 
+
 export type loginRequest=Request<{},{},{
         username:string,
         password:string
 }>
 export type signUpRequest=loginRequest
-export type clickHistoryRequest = Request<{},{},{
-      decrypted_username:string
-}>& {
+export type clickHistoryRequest = Request<{},{},{}>& {
     headers:{
         token:string,
         model:string,
@@ -74,17 +73,14 @@ export type clickHistoryRequest = Request<{},{},{
 }
 
 export type loadHistoryTitlesRequest= Request<{},{},{
-    model:string,
-    decrypted_username:string
+    model:string
 }>&{
     headers:{
         token:string
     }
 }
 
-export type deleteChatRequest=Request<{},{},{
-    decrypted_username:string
-}>&{
+export type deleteChatRequest=Request<{},{},{}>&{
     headers:{
         token:string,
         model:string,
@@ -95,17 +91,14 @@ export type deleteChatRequest=Request<{},{},{
 export type sendMessageRequest=Request<{},{},{
     message:string,
     model:string,
-    chat_number:string,
-    decrypted_username:string
+    chat_number:string
 }> &{
     headers:{
         token:string
     }
 }
 
-export type updateChatRequest= Request<{},{},{
-    decrypted_username:string
-}> &{
+export type updateChatRequest= Request<{},{},{}> &{
     headers:{
         token:string,
         model:string,
@@ -114,8 +107,7 @@ export type updateChatRequest= Request<{},{},{
 }
 
 export type loadNewChatRequest=Request<{},{},{
-    model:string,
-    decrypted_username:string
+    model:string
 }>&{
     headers:{
         token:string

@@ -169,11 +169,11 @@ async def generate_working_memory(request:GenerateWorkingMemoryRequest):
     
     thought, answer = parse_deepseek_response(full_text)
     try:
-        output_state=json.loads(answer)
+        output_updation_state=json.loads(answer)
     except json.JSONDecodeError as e:
         print(f"json parsing error in [generate_working_memory]:\n {e}")
     return {
-        "state":output_state
+        "stateUpdationObject":output_updation_state
     }
 
 @app.post("/reasoning")

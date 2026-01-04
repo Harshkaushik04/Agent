@@ -319,24 +319,25 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
     }
     //to complete: implementation of feedback,approval by user
     let resp;
+    let stateUpdateObj = [];
+    feedback = "";
+    approved = false;
     while (!approved) {
-        feedback = "";
         resp = yield axios.post("http://localhost:5000/generate-working-memory", {
             state: state,
             feedback: feedback,
             model: model,
             chat_number: chat_number
         });
-        yield requestApprovalState(foundWs, username, state);
+        stateUpdateObj = resp.data.stateUpdationObject;
+        yield requestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj);
     }
-    //@ts-ignore
-    state = resp.data.state;
-    approved = false;
-    let stateUpdateObj = [];
+    updateState(state, stateUpdateObj);
     let log = "";
     while (!state.final_goal_completed) {
+        feedback = "";
+        approved = false;
         while (!approved) {
-            feedback = "";
             let resp1 = yield axios.post("http://localhost:5000/reasoning", {
                 state: state,
                 feedback: feedback,
@@ -348,8 +349,8 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
         }
         updateState(state, stateUpdateObj);
         approved = false;
+        feedback = "";
         while (!approved) {
-            feedback = "";
             let resp2 = yield axios.post("http://localhost:5000/execuete", {
                 state: state,
                 model: model,
@@ -362,8 +363,8 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
         }
         updateState(state, stateUpdateObj);
         approved = false;
+        feedback = "";
         while (!approved) {
-            feedback = "";
             let resp3 = yield axios.post("http://localhost:5000/make-log", {
                 state: state,
                 log: log,
@@ -376,8 +377,8 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
         }
         updateState(state, stateUpdateObj);
         approved = false;
+        feedback = "";
         while (!approved) {
-            feedback = "";
             let resp4 = yield axios.post("http://localhost:5000/update-working-memory", {
                 state: state,
                 feedback: feedback,
@@ -388,7 +389,6 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
             yield requestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj);
         }
         updateState(state, stateUpdateObj);
-        approved = false;
     }
     //generate-working-memory
     //while-loop-start{
@@ -410,9 +410,10 @@ function initialiseWorkingMemory(user_message) {
             }],
         previous_actions_and_logs: [],
         final_goal: user_message,
-        current_goal: "reasoning to make a plan",
+        current_goal: "make a plan to reach goal",
         rough_plan_to_reach_goal: [],
         summaries: [],
+        urls: [],
         env_state: [],
         episodic_memory_descriptions: [],
         current_function_to_execuete: {

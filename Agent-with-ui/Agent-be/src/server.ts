@@ -320,25 +320,26 @@ app.post("/send-message",async (req:Request,res:Response)=>{
         throw new Error("[server.ts] websocket not connected till now!! => connect message not received?")
     }
     //to complete: implementation of feedback,approval by user
-    let resp:Axios.AxiosXHR<CustomTypes.stateObjectType>
+    let resp:Axios.AxiosXHR<CustomTypes.stateUpdationObjectType>
+    let stateUpdateObj:CustomTypes.stateUpdationType[]=[]
+    feedback=""
+    approved=false
     while(!approved){
-        feedback=""
-        resp=await axios.post<CustomTypes.stateObjectType>("http://localhost:5000/generate-working-memory",{
+        resp=await axios.post<CustomTypes.stateUpdationObjectType>("http://localhost:5000/generate-working-memory",{
             state:state,
             feedback:feedback,
             model:model,
             chat_number:chat_number
         })
-        await requestApprovalState(foundWs,username,state)
+        stateUpdateObj=resp.data.stateUpdationObject
+        await requestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj)
     }
-    //@ts-ignore
-    state=resp.data.state
-    approved=false
-    let stateUpdateObj:CustomTypes.stateUpdationType[]=[]
+    updateState(state,stateUpdateObj)
     let log=""
     while(!state.final_goal_completed){
+        feedback=""
+        approved=false
         while(!approved){
-            feedback=""
             let resp1=await axios.post<CustomTypes.resoningResponseType>("http://localhost:5000/reasoning",{
                 state:state,
                 feedback:feedback,
@@ -350,8 +351,8 @@ app.post("/send-message",async (req:Request,res:Response)=>{
         }
         updateState(state,stateUpdateObj)
         approved=false
+        feedback=""
         while(!approved){
-            feedback=""
             let resp2=await axios.post<CustomTypes.execueteResponseType>("http://localhost:5000/execuete",{
                 state:state,
                 model:model,
@@ -364,8 +365,8 @@ app.post("/send-message",async (req:Request,res:Response)=>{
         }
         updateState(state,stateUpdateObj)
         approved=false
+        feedback=""
         while(!approved){
-            feedback=""
             let resp3=await axios.post<CustomTypes.makeLogResponseType>("http://localhost:5000/make-log",{
                 state:state,
                 log:log,
@@ -378,8 +379,8 @@ app.post("/send-message",async (req:Request,res:Response)=>{
         }
         updateState(state,stateUpdateObj)
         approved=false
+        feedback=""
         while(!approved){
-            feedback=""
             let resp4=await axios.post<CustomTypes.updateWorkingMemoryResponseType>("http://localhost:5000/update-working-memory",{
                 state:state,
                 feedback:feedback,
@@ -390,7 +391,6 @@ app.post("/send-message",async (req:Request,res:Response)=>{
             await requestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj)
         }
         updateState(state,stateUpdateObj)
-        approved=false
     }
     //generate-working-memory
     //while-loop-start{
@@ -413,7 +413,7 @@ function initialiseWorkingMemory(user_message:string):CustomTypes.workingMemoryS
         }],
         previous_actions_and_logs:[],
         final_goal:user_message,
-        current_goal:"reasoning to make a plan",
+        current_goal:"make a plan to reach goal",
         rough_plan_to_reach_goal:[],
         summaries:[],
         urls:[],

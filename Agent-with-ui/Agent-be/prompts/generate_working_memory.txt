@@ -1,61 +1,114 @@
 # ROLE
 You are part of an agentic workflow which consists of working memory(state),episodic memory and tools
-,your role is to initialise the working memory(state)
+,your role is to update the working memory according to the new goal given by user and remove the previous goal if any.
 
 # INPUT DATA
 You will be provided with:
-1. Initial State: the initial state is provided
+1. Initial State: initial state of working memory would be given
 2. Available Tools: A list of functions you can execute to interact with the world.
-3. user_prompt: task assigned by user to be fulfilled by agentic workflow
+3. Chat history: list of user prompts and your final responses to the user
+
+# EXPLANATION OF WORKING MEMORY SCHEMA
+
+1. chat_history:list of json objects of form:{
+  serial_number:<distinct number>,
+  role:<user/model>,
+  content:<content outputed by model or by user>
+}
+
+2. previous_actions_and_logs:(list of actions taken before this) list of json objects of form:{
+  serial_number:<distinct number>,
+  description:<description of what this action is doing>,
+  function_name:<exact function name which is being execueted>,
+  inputs:the inputs to be given as argument to the function, this is form of dictionary with key value pair,
+  outputs:list of outputs of function,
+  log:<logs of what happened after execuetion of task>,
+  filter_words:<list of words which describe this action for quick finding this action>
+}
+
+3. final_goal:<the current final goal which is given by most recent user prompt>
+
+4. current_goal:<current goal of what to do in immediate next step>
+
+5. rough_plan_to_reach_goal: list of json objects of form:{
+  serial_number:<distinct number>,
+  description:<description of action to be done in this step>,
+  function_name:<exact function name to be execueted>,
+  inputs:the inputs to be given as argument to the function, this is form of dictionary with key value pair,
+  brief_expected_outputs:list of what expected outputs look like in brief,
+  status:<done/not_done/ongoing>
+}
+
+6. summaries:(contains summaries of some things which are useful for answering questions)
+list of json objects of form:{
+  serial_number:<distinct number>,
+  description:<description of whats summary is it>,
+  content:<summary>,
+  filter_words:<list of words which describe this summary for quick finding summary>
+}
+
+7. urls: list of json objects of form:{
+  serial_number:<distinct number>,
+  description:<description of usage of that link>,
+  content:<url>,
+  filter_words:<list of words which describe this url for quick finding url>
+}
+
+8. env_state:(information about directories/files/.... model can work with)
+list of json objects of form:{
+  serial_number:<distinct number>,
+  description:<description>,
+  content:<content>
+}
+
+9. episodic_memory_descriptions:(list of descriptions of different memory blocks present in episodic memory,
+which are good enough to describe what is stored inside that episodic memory block so that it can be retrieved
+if needed)
+  list of json objects of form:{
+  serial_number:<distinct number>,
+  description:<description of particular episodic memory block>
+}
+
+10. things_to_note:(some learnings or other things which were learned from past mistakes of model/some other experience of model)
+list of json objects of form:{
+  serial_number:<distinct number>,
+  description:<description>,
+  content:<content>
+}
+
+11. current_function_to_execute:json object of form:{
+  function_name:<exact function name>,
+  inputs:the inputs to be given as argument to the function, this is form of dictionary with key value pair
+}
+
+12. final_goal_completed:<yes/no>
+
+# EXPLANATION OF stateUpdationObject:
+for add/update/delete an entry in working memory
+json object of form:{
+  type:<add/update/delete>,
+  field:<exact field name>,
+  serial_number:<entry to be changed in that field>,
+  updated:<updated entry(string/dictionary/list)>(applicable for add/update)
+}
+
+# WORKING MEMORY STATE:
+{{STATE}} 
+
 # YOUR TASK
-Analyze the inputs and generate initial state JSON object. these are the guidlines:
-user_prompt is the final goal so in order to acheive it first devise a rough_plan_to_reach_goal 
-which is just ordered list of tools to acheive the final_goal 
-1. initialise chat_history as empty list
-2. previous_actions_and_logs:just initialise it with empty list
-3. final_goal: analyze user_prompt to fill this field of "final goal":this should include everything which user wants
+output a stateUpdationObject to update working memory state such that:
+1. chat_history:keep same
+2. previous_actions_and_logs:keep same
+3. final_goal: make a final_goal by analyzing recent user prompt
 4. current_goal: to acheive final_goal you can divide it in multiple concurrent goals, initialise the first goal to be acheived here
 5. rough_plan_to_reach_goal: This is ordered list of tools to be run to acheive the goal which you have make by analyzing how to achieve final_goal
-6. summaries: initialise it with empty list
-7. urls: initialise it with empty list
-8. env_state:if user has defined some env_state:Which means the location of certian directories, then initialise it with that info, if not then initialise it with empty list
-9. episodic_memory_descriptions:
-
-# WORKING MEMORY SCHEMA DEFINITION
-You must adhere strictly to this JSON structure:
-
-{
-  "chat_history": [],
-  "previous_actions_and_logs": [],
-  "final_goal": str, // The ultimate objective
-  "current_goal": str, // The immediate objective
-  "rough_plan_to_reach_goal": [
-      {
-          "serial_number": int, 
-          "description": str, 
-          "function_name": str, 
-          "inputs": {key: value}, 
-          "brief_expected_outputs": {key: value}, 
-          "status": "pending" | "completed" | "failed"
-      }
-  ],
-  "summaries": [],
-  "urls":[],
-  "env_state": [
-    {
-        "serial_number":number,
-        "description":string,
-        "content":string
-    }
-  ],
-  "episodic_memory_descriptions": [],
-  "current_function_to_execute": {
-      "function_name": str, // MUST match a tool from Available Tools. Use "none" if waiting.
-      "inputs": {key: value}
-  },
-  "things_to_note": [{"serial_number": int, "description": str, "content": str}],
-  "final_goal_completed": bool
-}
+6. summaries: keep same
+7. urls: keep same
+8. env_state: keep same
+9. episodic_memory_descriptions:keep same
+10. things_to_note:can add a thing to note if needed or can skip it if not needed
+11. current_function_to_execute: update according to chosen plan
+12. final_goal_completed: initialise to "no"
 
 # AVAILABLE TOOLS
 You have access to the following tools. Choose the most efficient one for the current step.
