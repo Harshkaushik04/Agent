@@ -1,5 +1,6 @@
 import type{ NavigateFunction } from "react-router-dom"
 import type { ReactNode } from "react"
+import type { Request } from "express"
 export type numString=number|string
 
 //Database-data types
@@ -338,3 +339,63 @@ export type listPair=chatHistoryPair|PreviousActionsAndLogsPair|roughPlanToReach
 episodicMemoryDescriptionsPair|currentFunctionToExecuetePair|thingsToNotePair
 
 export type anyPair=listPair|stringPair
+
+//requests to send
+
+
+export type loginRequest=Request<{},{},{
+        username:string,
+        password:string
+}>
+export type signUpRequest=loginRequest
+export type clickHistoryRequest = Request<{},{},{}>& {
+    headers:{
+        token:string,
+        model:string,
+        chat_number:string
+    }
+}
+
+export type loadHistoryTitlesRequest= Request<{},{},{
+    model:string
+}>&{
+    headers:{
+        token:string
+    }
+}
+
+export type deleteChatRequest=Request<{},{},{}>&{
+    headers:{
+        token:string,
+        model:string,
+        chat_number:string
+    }
+}
+
+export type sendMessageRequest=Request<{},{},{
+    message:string,
+    model:string,
+    chat_number:string
+}> &{
+    headers:{
+        token:string
+    }
+}
+
+export type updateChatRequest= Request<{},{},{}> &{
+    headers:{
+        token:string,
+        model:string,
+        chat_number:string
+    }
+}
+
+export type loadNewChatRequest=Request<{},{},{
+    model:string
+}>&{
+    headers:{
+        token:string
+    }
+}
+
+export type afterLoginRequest=loadHistoryTitlesRequest|deleteChatRequest|sendMessageRequest|updateChatRequest|loadNewChatRequest

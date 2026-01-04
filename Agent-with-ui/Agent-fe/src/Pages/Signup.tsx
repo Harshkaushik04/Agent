@@ -6,8 +6,6 @@ import * as CustomTypes from '../types'
 function Signup() {
   const {username,setUsername,password,setPassword,Navigate}=useSignUp()
   const {divRef,getDivRefCurrent}=useHtmlDivRef()
-  let err_ref=divRef
-  let err_ref_current:HTMLDivElement
   async function handleSubmit(e:React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const res=await axios.post<CustomTypes.signUpType>("http://localhost:3000/signup",{
@@ -18,11 +16,12 @@ function Signup() {
         Navigate("/login");
     }
     else{
+        const err_ref_current=getDivRefCurrent()
         err_ref_current.style.display="block";
     }
   }
   useEffect(()=>{
-    err_ref_current=getDivRefCurrent()
+    const err_ref_current=getDivRefCurrent()
     err_ref_current.style.display="none";
   },[])
 
@@ -110,7 +109,7 @@ function Signup() {
         >
           Signup
         </button>
-        <div ref={err_ref} style={{color:"white"}}>Duplicate username</div>
+        <div ref={divRef} style={{color:"white"}}>Duplicate username</div>
       </form>
     </div>
   );

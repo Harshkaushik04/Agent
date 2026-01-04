@@ -11,7 +11,9 @@
   },
   "dependencies": {
     "@types/axios": "^0.9.36",
+    "@types/express": "^5.0.6",
     "axios": "^1.13.2",
+    "express": "^5.2.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.10.1"
