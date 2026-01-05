@@ -85,9 +85,6 @@ json object of form:{
   updated:<updated entry(string/dictionary/list)>(applicable for add/update)
 }
 
-# WORKING MEMORY STATE:
-{{STATE}} 
-
 # AVAILABLE TOOLS
 You have access to the following tools. Choose the most efficient one for the current step.
 (note: string[] means list of string)
@@ -174,6 +171,177 @@ usage: takes text as input and outputs its summary
 16. execuete_file(file_path:string,language:string<python/c/c++>):output:string
 usage:execuetes the file whose file path is given as input and outputs the stdout string from the execueted file
 
+# CRITICAL RULES
+1. Your final output MUST only contain a list of jsons and no extra content
+2. only use tools which are provided in AVAILABLE TOOLS section, dont invent tool of your own
+3. **Consistency:** Ensure `serial_number` fields increment logically if you add new items.
+4. **Reasoning:** Before outputting the JSON, you may perform internal chain-of-thought, but the final output must be ONLY the JSON object.
+5. **NO HALLUCINATION:** Do not use the content from the "EXAMPLE" section below. Only use the content provided in the "ACTUAL WORKING MEMORY STATE" section.
+
+# EXAMPLE OF WORKING (One-Shot Learning):
+for initial working state:
+{
+  "chat_history": [{
+    serial_number:1,
+    role:"user",
+    content:"research which language is better python vs c++"
+  }],
+  "previous_actions_and_logs": [],
+  "final_goal": "",
+  "current_goal": "",
+  "rough_plan_to_reach_goal": [],
+  "variables":[],
+  "env_state": [],
+  "episodic_memory_descriptions": [],
+  "things_to_note": [],
+  "current_function_to_execute": {
+    "function_name": "",
+    "inputs": {}
+  },
+  "final_goal_completed": "no"
+}
+output should be like this:
+[
+  {
+    "type": "update",
+    "field": "final_goal",
+    "serial_number": 0,
+    "updated": "Research and compare Python and C++ to determine which language is better overall, covering performance, usage, and syntax."
+  },
+  {
+    "type": "update",
+    "field": "current_goal",
+    "serial_number": 0,
+    "updated": "Generate search queries to find general comparisons between Python and C++."
+  },
+  {
+    "type": "add",
+    "field": "rough_plan_to_reach_goal",
+    "serial_number": 1,
+    "updated": {
+      "serial_number": 1,
+      "description": "Generate search queries for general Python vs C++ comparison",
+      "function_name": "search_query_generation",
+      "inputs": {
+        "sentences": ["difference between python and c++", "python vs c++ performance and use cases"]
+      },
+      "brief_expected_outputs": ["search queries"],
+      "status": "ongoing"
+    }
+  },
+  {
+    "type": "add",
+    "field": "rough_plan_to_reach_goal",
+    "serial_number": 2,
+    "updated": {
+      "serial_number": 2,
+      "description": "Search Google for comparison articles",
+      "function_name": "search_engine_1",
+      "inputs": {
+        "list_search_query_top_k": []
+      },
+      "brief_expected_outputs": ["list of urls"],
+      "status": "not_done"
+    }
+  },
+  {
+    "type": "add",
+    "field": "rough_plan_to_reach_goal",
+    "serial_number": 3,
+    "updated": {
+      "serial_number": 3,
+      "description": "Download raw HTML from the found URLs",
+      "function_name": "search_engine_2",
+      "inputs": {
+        "urls": []
+      },
+      "brief_expected_outputs": ["raw html file paths"],
+      "status": "not_done"
+    }
+  },
+  {
+    "type": "add",
+    "field": "rough_plan_to_reach_goal",
+    "serial_number": 4,
+    "updated": {
+      "serial_number": 4,
+      "description": "Clean the downloaded HTML files",
+      "function_name": "html_cleaner",
+      "inputs": {
+        "list_url_file_path_json": []
+      },
+      "brief_expected_outputs": ["cleaned html file paths"],
+      "status": "not_done"
+    }
+  },
+  {
+    "type": "add",
+    "field": "rough_plan_to_reach_goal",
+    "serial_number": 5,
+    "updated": {
+      "serial_number": 5,
+      "description": "Merge all cleaned HTML files into one context file",
+      "function_name": "merge_files",
+      "inputs": {
+        "file_paths": []
+      },
+      "brief_expected_outputs": ["merged file path"],
+      "status": "not_done"
+    }
+  },
+  {
+    "type": "add",
+    "field": "rough_plan_to_reach_goal",
+    "serial_number": 6,
+    "updated": {
+      "serial_number": 6,
+      "description": "Generate the final answer summarizing the pros and cons of each language",
+      "function_name": "generation_from_context",
+      "inputs": {
+        "whether_path_or_data": "path",
+        "query": "Which language is better, Python or C++, and what are the key differences in performance and syntax?",
+        "context": "" 
+      },
+      "brief_expected_outputs": ["full_answer", "after_think_answer"],
+      "status": "not_done"
+    }
+  },
+  {
+    "type": "update",
+    "field": "current_function_to_execute",
+    "serial_number": 0,
+    "updated": {
+      "function_name": "search_query_generation",
+      "inputs": {
+        "sentences": ["difference between python and c++", "python vs c++ pros and cons"]
+      }
+    }
+  }
+]
+### END OF EXAMPLE ###
+
+# ACTUAL WORKING MEMORY STATE (Real Input)
+{
+  "chat_history": [{
+    serial_number:1,
+    role:"user",
+    content:"research about whether samay raina and harkirat singh are friends?"
+  }],
+  "previous_actions_and_logs": [],
+  "final_goal": "",
+  "current_goal": "",
+  "rough_plan_to_reach_goal": [],
+  "variables":[],
+  "env_state": [],
+  "episodic_memory_descriptions": [],
+  "things_to_note": [],
+  "current_function_to_execute": {
+    "function_name": "",
+    "inputs": {}
+  },
+  "final_goal_completed": "no"
+}
+
 # YOUR TASK
 output a list of stateUpdationObjects to update the working memory state such that:
 1. chat_history:keep same
@@ -187,10 +355,3 @@ output a list of stateUpdationObjects to update the working memory state such th
 9. things_to_note:can add a thing to note if needed or can skip it if not needed
 10. current_function_to_execute: update according to chosen plan
 11. final_goal_completed: initialise to "no"
-
-# CRITICAL RULES
-1. Your final output MUST only contain a list of jsons and no extra content.
-2. only use tools which are provided in AVAILABLE TOOLS section, dont invent tool of your own
-3. **Consistency:** Ensure `serial_number` fields increment logically if you add new items.
-4. **Reasoning:** Before outputting the JSON, you may perform internal chain-of-thought, but the final output must be ONLY the JSON object.
-

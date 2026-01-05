@@ -1,0 +1,20 @@
+{
+  "chat_history": [{
+    serial_number:1,
+    role:"user",
+    content:"research which language is better python vs c++"
+  }],
+  "previous_actions_and_logs": [],
+  "final_goal": "",
+  "current_goal": "",
+  "rough_plan_to_reach_goal": [],
+  "variables":[],
+  "env_state": [],
+  "episodic_memory_descriptions": [],
+  "things_to_note": [],
+  "current_function_to_execute": {
+    "function_name": "",
+    "inputs": {}
+  },
+  "final_goal_completed": "no"
+}
