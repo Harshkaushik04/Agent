@@ -33,7 +33,7 @@ def clean_memory():
     """Forcefully frees VRAM for other models (embeddings)."""
     global llm
     if llm:
-        print("🔻 Closing LlamaCPP model...")
+        print(" Closing LlamaCPP model...")
         llm.close()
         del llm
         llm = None
@@ -62,10 +62,10 @@ app = FastAPI(lifespan=lifespan)
 def load_model():
     global llm
     if llm is not None:
-        print("⚠️ Model is already loaded.")
+        print(" Model is already loaded.")
         return
 
-    print(f"🚀 Loading model into VRAM: {MODEL_PATH}")
+    print(f" Loading model into VRAM: {MODEL_PATH}")
     llm = Llama(
         model_path=MODEL_PATH,
         n_ctx=N_CTX,
@@ -80,7 +80,10 @@ def load_model():
     print("✅ Model loaded and ready!")
 
 def make_generate_working_memory_prompt():
-    return ""
+    prompt=""
+    with open("../prompts/extras/test.txt") as f:
+        prompt=f.read()
+    return prompt
 
 def make_reasoning_prompt():
     return ""
@@ -136,9 +139,10 @@ async def open_model_route():
 # --- GENERATE ROUTE (Updated with Safety Check) ---
 @app.post("/generate-working-memory")
 async def generate_working_memory(request:GenerateWorkingMemoryRequest):
+    # print(f"[entered-generate_working_memory]")
     global llm
     
-    # 🛑 Safety Check
+    # Safety Check
     if llm is None:
         return{
             "valid":False
@@ -168,19 +172,21 @@ async def generate_working_memory(request:GenerateWorkingMemoryRequest):
     print("\n------------------------------------------------\n")
     
     thought, answer = parse_deepseek_response(full_text)
+    output_updation_state={}
     try:
         output_updation_state=json.loads(answer)
     except json.JSONDecodeError as e:
         print(f"json parsing error in [generate_working_memory]:\n {e}")
     return {
-        "stateUpdationObject":output_updation_state
+        "stateUpdationObject":output_updation_state,
+        "valid":True
     }
 
 @app.post("/reasoning")
 async def reasoning(request:ReasoningRequest):
     global llm
     
-    # 🛑 Safety Check
+    # Safety Check
     if llm is None:
         return{
             "valid":False
@@ -215,7 +221,8 @@ async def reasoning(request:ReasoningRequest):
     except json.JSONDecodeError as e:
         print(f"json parsing error in [generate_working_memory]:\n {e}")
     return {
-        "stateUpdationObject":output_state_updation_object
+        "stateUpdationObject":output_state_updation_object,
+        "valid":True
     }
 
 
@@ -223,7 +230,7 @@ async def reasoning(request:ReasoningRequest):
 async def execuete(request:ExecueteRequest):
     global llm
     
-    # 🛑 Safety Check
+    # Safety Check
     if llm is None:
         return{
             "valid":False
@@ -258,14 +265,16 @@ async def execuete(request:ExecueteRequest):
     except json.JSONDecodeError as e:
         print(f"json parsing error in [generate_working_memory]:\n {e}")
     return {
-        "stateUpdationObject":output_state_updation_object
+        "stateUpdationObject":output_state_updation_object,
+        "valid":True,
+        "log":"" #do something here
     }
 
 @app.post("/make-log")
 async def make_log(request:MakeLogRequest):
     global llm
     
-    # 🛑 Safety Check
+    # Safety Check
     if llm is None:
         return{
             "valid":False
@@ -300,14 +309,15 @@ async def make_log(request:MakeLogRequest):
     except json.JSONDecodeError as e:
         print(f"json parsing error in [generate_working_memory]:\n {e}")
     return {
-        "stateUpdationObject":output_state_updation_object
+        "stateUpdationObject":output_state_updation_object,
+        "valid":True
     }
 
 @app.post("/update-working-memory")
-async def execuete(request:UpdateWorkingMemoryRequest):
+async def update_working_memory(request:UpdateWorkingMemoryRequest):
     global llm
     
-    # 🛑 Safety Check
+    # Safety Check
     if llm is None:
         return{
             "valid":False
@@ -342,7 +352,8 @@ async def execuete(request:UpdateWorkingMemoryRequest):
     except json.JSONDecodeError as e:
         print(f"json parsing error in [generate_working_memory]:\n {e}")
     return {
-        "stateUpdationObject":output_state_updation_object
+        "stateUpdationObject":output_state_updation_object,
+        "valid":True
     }
 
 if __name__ == "__main__":

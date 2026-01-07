@@ -171,13 +171,6 @@ usage: takes text as input and outputs its summary
 16. execuete_file(file_path:string,language:string<python/c/c++>):output:string
 usage:execuetes the file whose file path is given as input and outputs the stdout string from the execueted file
 
-# CRITICAL RULES
-1. Your final output MUST only contain a list of jsons and no extra content
-2. only use tools which are provided in AVAILABLE TOOLS section, dont invent tool of your own
-3. **Consistency:** Ensure `serial_number` fields increment logically if you add new items.
-4. **Reasoning:** Before outputting the JSON, you may perform internal chain-of-thought, but the final output must be ONLY the JSON object.
-5. **NO HALLUCINATION:** Do not use the content from the "EXAMPLE" section below. Only use the content provided in the "ACTUAL WORKING MEMORY STATE" section.
-
 # EXAMPLE OF WORKING (One-Shot Learning):
 for initial working state:
 {
@@ -355,3 +348,10 @@ output a list of stateUpdationObjects to update the working memory state such th
 9. things_to_note:can add a thing to note if needed or can skip it if not needed
 10. current_function_to_execute: update according to chosen plan
 11. final_goal_completed: initialise to "no"
+
+# CRITICAL RULES
+1. Your final output MUST only contain a list of jsons and no extra content
+2. only use tools which are provided in AVAILABLE TOOLS section, dont invent tool of your own
+3. **Consistency:** Ensure `serial_number` fields increment logically if you add new items.
+4. **Reasoning:** Before outputting the JSON, you may perform internal chain-of-thought, but the final output must be ONLY the JSON object.
+5. **NO HALLUCINATION:** Do not use the content from the "EXAMPLE" section below. Only use the content provided in the "ACTUAL WORKING MEMORY STATE" section.

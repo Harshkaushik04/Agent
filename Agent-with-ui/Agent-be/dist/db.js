@@ -27,10 +27,6 @@ const history = new mongoose.Schema({
             before_think: String,
             after_think: String,
             timestamp: { type: Date, default: Date.now }
-        }],
-    summaries: [{
-            description: String,
-            content: String
         }]
 });
 const users = new mongoose.Schema({
@@ -39,14 +35,17 @@ const users = new mongoose.Schema({
 });
 const episodicMemory = new mongoose.Schema({
     username: String,
-    title: String,
     memories: [{
+            serial_number: Number,
             description: String,
             content: String
         }]
 });
 //to get back to same working memory after disconnected
 const workingMemory = new mongoose.Schema({
+    username: String,
+    model: String,
+    title: String,
     chat_history: [{
             serial_number: Number,
             role: String,
@@ -55,7 +54,7 @@ const workingMemory = new mongoose.Schema({
     previous_actions_and_logs: [{
             serial_number: Number,
             description: String,
-            function: String,
+            function_name: String,
             inputs: {
                 type: Map,
                 of: String
@@ -83,8 +82,9 @@ const workingMemory = new mongoose.Schema({
             },
             status: String
         }],
-    summaries: [{
+    variables: [{
             serial_number: Number,
+            variable_type: String,
             description: String,
             content: String,
             filter_words: [{ type: String, defualt: [] }]
@@ -105,16 +105,26 @@ const workingMemory = new mongoose.Schema({
             of: String
         }
     },
-    things_to_note: {
-        serial_number: Number,
-        description: String,
-        content: String
-    },
+    things_to_note: [{
+            serial_number: Number,
+            description: String,
+            content: String
+        }],
     final_goal_completed: String
 });
+const episodicMemoryDescriptions = new mongoose.Schema({
+    username: String,
+    memory_descriptions: [{
+            serial_number: Number,
+            description: String
+        }]
+});
 history.index({ username: 1, model: 1, title: 1 }, { unique: true });
-episodicMemory.index({ username: 1, title: 1 }, { unique: true });
+episodicMemory.index({ username: 1 }, { unique: true });
+workingMemory.index({ username: 1, title: 1, model: 1 }, { unique: true });
+episodicMemoryDescriptions.index({ username: 1 }, { unique: true });
 export const HistoryModel = mongoose.model("history", history);
 export const UserModel = mongoose.model("users", users);
 export const EpisodicMemoryModel = mongoose.model("episodicMemory", episodicMemory);
-export const workingMemoryModel = mongoose.model("workingMemory", workingMemory);
+export const WorkingMemoryModel = mongoose.model("workingMemory", workingMemory);
+export const EpisodicMemoryDescriptionsModel = mongoose.model("episodicMemoryDescriptions", episodicMemoryDescriptions);

@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { connectDB, HistoryModel, UserModel } from "./db.js";
+import { connectDB, HistoryModel, UserModel, WorkingMemoryModel } from "./db.js";
 import express from "express";
 import cors from "cors";
 import jwt from "jsonwebtoken";
@@ -35,6 +35,7 @@ function requestApprovalStateAndUpdation(ws, username, state, stateUpdationObjec
     return __awaiter(this, void 0, void 0, function* () {
         // const state_string=JSON.stringify(state)
         // const state_updation_string=JSON.stringify(stateUpdationObject)
+        console.log(`[requestApprovalStateAndUpdation] sending approval message to frontend`);
         ws.send(JSON.stringify({
             eventType: "approval",
             state: state,
@@ -56,6 +57,38 @@ function requestApprovalState(ws, username, state) {
         return new Promise((resolve) => {
             pendingApprovals.set(username, resolve);
         });
+    });
+}
+function stateWithUserToState(stateWithUser) {
+    let state = {
+        chat_history: stateWithUser.chat_history,
+        previous_actions_and_logs: stateWithUser.previous_actions_and_logs,
+        final_goal: stateWithUser.final_goal,
+        current_goal: stateWithUser.current_goal,
+        rough_plan_to_reach_goal: stateWithUser.rough_plan_to_reach_goal,
+        variables: stateWithUser.variables,
+        env_state: stateWithUser.env_state,
+        episodic_memory_descriptions: stateWithUser.episodic_memory_descriptions,
+        current_function_to_execuete: stateWithUser.current_function_to_execuete,
+        things_to_note: stateWithUser.things_to_note,
+        final_goal_completed: stateWithUser.final_goal_completed
+    };
+    return state;
+}
+function saveStateToStateWithUser(state, stateWithUser) {
+    return __awaiter(this, void 0, void 0, function* () {
+        stateWithUser.chat_history = state.chat_history;
+        stateWithUser.previous_actions_and_logs = state.previous_actions_and_logs;
+        stateWithUser.final_goal = state.final_goal;
+        stateWithUser.current_goal = state.current_goal;
+        stateWithUser.rough_plan_to_reach_goal = state.rough_plan_to_reach_goal;
+        stateWithUser.variables = state.variables;
+        stateWithUser.env_state = state.env_state;
+        stateWithUser.episodic_memory_descriptions = state.episodic_memory_descriptions;
+        stateWithUser.current_function_to_execuete = state.current_function_to_execuete;
+        stateWithUser.things_to_note = state.things_to_note;
+        stateWithUser.final_goal_completed = state.final_goal_completed;
+        yield stateWithUser.save();
     });
 }
 // function sendOutput(ws:WebSocket,username:string)
@@ -238,6 +271,25 @@ app.post("/load-new-chat", (req, res) => __awaiter(void 0, void 0, void 0, funct
         model: model,
         title: `title${num_chats + 1}`
     });
+    yield WorkingMemoryModel.create({
+        username: username,
+        model: model,
+        title: `title${num_chats + 1}`,
+        chat_history: [],
+        previous_actions_and_logs: [],
+        final_goal: "",
+        current_goal: "",
+        rough_plan_to_reach_goal: [],
+        variables: [],
+        env_state: [],
+        episodic_memory_descriptions: [],
+        current_function_to_execuete: {
+            function_name: "",
+            inputs: {}
+        },
+        things_to_note: [],
+        final_goal_completed: "yes"
+    });
     chat_row.messages[0].content = String(num_chats + 1);
     console.log(`[load-new-chat] chat_row.messages[0].content:${chat_row.messages[0].content}`);
     yield chat_row.save();
@@ -312,7 +364,61 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
     let user_message = req.body.message;
     let model = req.body.model;
     let chat_number = Number(req.body.chat_number);
-    let state = initialiseWorkingMemory(user_message);
+    let stateWithUser = yield WorkingMemoryModel.findOne({
+        username: username,
+        model: model,
+        title: `title${chat_number}`
+    });
+    let state;
+    if (!stateWithUser) {
+        console.log("why is stateWithUser not defined till now?");
+        yield WorkingMemoryModel.create({
+            username: username,
+            model: model,
+            title: `title${chat_number}`,
+            chat_history: [{
+                    serial_number: 0,
+                    role: "user",
+                    content: user_message
+                }],
+            previous_actions_and_logs: [],
+            final_goal: user_message,
+            current_goal: "",
+            rough_plan_to_reach_goal: [],
+            variables: [],
+            env_state: [],
+            episodic_memory_descriptions: [],
+            current_function_to_execuete: {
+                function_name: "",
+                inputs: {}
+            },
+            things_to_note: [],
+            final_goal_completed: "no"
+        });
+        stateWithUser = yield WorkingMemoryModel.findOne({
+            username: username,
+            model: model,
+            title: `title${chat_number}`
+        });
+        if (!stateWithUser) {
+            throw new Error("why is stateWithUser still not defined??");
+        }
+        state = stateWithUserToState(stateWithUser);
+    }
+    else {
+        state = stateWithUserToState(stateWithUser);
+        let len_chat = state.chat_history.length;
+        let serial_num = 1;
+        if (len_chat != 0) {
+            serial_num = state.chat_history[len_chat - 1].serial_number + 1;
+        }
+        state.chat_history.push({
+            serial_number: serial_num,
+            role: "user",
+            content: user_message
+        });
+        saveStateToStateWithUser(state, stateWithUser);
+    }
     const foundWs = usernameToWebSocket.get(username);
     if (!foundWs) {
         throw new Error("[server.ts] websocket not connected till now!! => connect message not received?");
@@ -333,8 +439,9 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
         yield requestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj);
     }
     updateState(state, stateUpdateObj);
+    saveStateToStateWithUser(state, stateWithUser);
     let log = "";
-    while (!state.final_goal_completed) {
+    while (state.final_goal_completed != "yes") {
         feedback = "";
         approved = false;
         while (!approved) {
@@ -348,6 +455,7 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
             yield requestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj);
         }
         updateState(state, stateUpdateObj);
+        saveStateToStateWithUser(state, stateWithUser);
         approved = false;
         feedback = "";
         while (!approved) {
@@ -362,6 +470,7 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
             yield requestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj);
         }
         updateState(state, stateUpdateObj);
+        saveStateToStateWithUser(state, stateWithUser);
         approved = false;
         feedback = "";
         while (!approved) {
@@ -376,6 +485,7 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
             yield requestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj);
         }
         updateState(state, stateUpdateObj);
+        saveStateToStateWithUser(state, stateWithUser);
         approved = false;
         feedback = "";
         while (!approved) {
@@ -389,6 +499,7 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
             yield requestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj);
         }
         updateState(state, stateUpdateObj);
+        saveStateToStateWithUser(state, stateWithUser);
     }
     //generate-working-memory
     //while-loop-start{
@@ -410,10 +521,9 @@ function initialiseWorkingMemory(user_message) {
             }],
         previous_actions_and_logs: [],
         final_goal: user_message,
-        current_goal: "make a plan to reach goal",
+        current_goal: "",
         rough_plan_to_reach_goal: [],
-        summaries: [],
-        urls: [],
+        variables: [],
         env_state: [],
         episodic_memory_descriptions: [],
         current_function_to_execuete: {
@@ -421,7 +531,7 @@ function initialiseWorkingMemory(user_message) {
             inputs: {}
         },
         things_to_note: [],
-        final_goal_completed: false
+        final_goal_completed: "no"
     };
     return state;
 }

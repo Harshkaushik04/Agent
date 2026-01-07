@@ -2,7 +2,7 @@ export const listFieldValues = [
     "chat_history",
     "previous_actions_and_logs",
     "rough_plan_to_reach_goal",
-    "summaries",
+    "variables",
     "env_state",
     "episodic_memory_descriptions",
     "current_function_to_execuete",

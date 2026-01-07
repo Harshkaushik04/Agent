@@ -24,12 +24,12 @@ class PlanStep(BaseModel):
     brief_expected_outputs: Dict[str, str]
     status: str
 
-class Summary(BaseModel):
+class Variable(BaseModel):
     serial_number:int
+    variable_type:str
     description: str
     content: str
     filter_words: List[str]
-Url=Summary
 
 class EnvState(BaseModel):
     serial_number:int
@@ -57,13 +57,12 @@ class WorkingMemorySchema(BaseModel):
     final_goal: str
     current_goal: str
     rough_plan_to_reach_goal: List[PlanStep]
-    summaries: List[Summary]
-    urls:List[Url]
+    variables:List[Variable]
     env_state: List[EnvState]
     episodic_memory_descriptions: List[EpisodicMemory]
     current_function_to_execuete:CurrentFunctionToExecuete
     things_to_note:List[ThingsToNode]
-    final_goal_completed:bool
+    final_goal_completed:str
 
 class Message():
     role: str
@@ -94,8 +93,7 @@ __all__ = [
     "ChatMessage", 
     "ActionLog", 
     "PlanStep", 
-    "Summary", 
-    "Url",
+    "Variable", 
     "Message", 
     "GenerateWorkingMemoryRequest",
     "ReasoningRequest", 

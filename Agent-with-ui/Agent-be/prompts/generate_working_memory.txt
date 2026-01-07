@@ -85,94 +85,23 @@ json object of form:{
   updated:<updated entry(string/dictionary/list)>(applicable for add/update)
 }
 
-# WORKING MEMORY STATE:
-{{STATE}} 
-
 # AVAILABLE TOOLS
 You have access to the following tools. Choose the most efficient one for the current step.
-(note: string[] means list of string)
-1. search_query_generation(sentences:string[]):list of {
-  sentence:string,
-  search_queries:string[]
-}
-usage: takes multiple sentences as input and outputs search queries corrosponding to each
+{{TOOLS}}
 
-2. search_engine_1(list_search_query_top_k: list of {
-  search_query:string,
-  top_k:number
-}):list of {
-  search_query:string,
-  urls:string[]
-}
-usage: takes multiple search queries along with (top_k-> represents the number of top urls to be selected) as input 
-and outputs urls corrosponding to each search query
+# CRITICAL RULES
+1. Your final output MUST only contain a list of jsons and no extra content
+2. only use tools which are provided in AVAILABLE TOOLS section, dont invent tool of your own
+3. **Consistency:** Ensure `serial_number` fields increment logically if you add new items.
+4. **Reasoning:** Before outputting the JSON, you may perform internal chain-of-thought, but the final output must be ONLY the JSON object.
+5. **NO HALLUCINATION:** Do not use the content from the "EXAMPLE" section below. Only use the content provided in the "ACTUAL WORKING MEMORY STATE" section.
 
-3. search_engine_2(urls:string[]):list of {
-  url:string,
-  file_store_path:string
-}
-usage: takes multiple urls as input and outputs file path corrosponding to each url in which its raw html is stored
+# EXAMPLE OF WORKING (One-Shot Learning):
+{{EXAMPLE}}
+### END OF EXAMPLE ###
 
-4. html_cleaner(list_url_file_path_json:list of {
-  url:string,
-  file_store_path:string
-}):list of {
-  url:string,
-  file_store_path:string
-}
-usage:takes multiple pair of {url,raw html file path} as input and outputs file path of cleaned html corrosponding to each url
-
-5. write_file(file_path:string,content:string,whether_addition:bool):<no output>
-usage:takes file path and the content to be added,whether_addition(if its true then existing file data is not overwritten,else its overwritten by new content)
-as input and writes into the file 
-
-6. read_file(file_path:string):content:str
-usage:takes file path which has to be read as input and outputs its content
-
-7. merge_files(file_paths:string[]):merged_file_path:string
-usage:takes multiple file paths as input and merges content of all into one file and outputs its file path
-
-8. make_rag_database(file_path:string):database_path:string
-usage: takes a file path as input and converts its content into a vector database, gives database path as output
-
-9. retrieval_from_database(database_path:string,list_search_query_top_k:list of {
-  search_query:string,
-  top_k:number
-}):list of {
-  search_query:string,
-  retrieved_chunks:string[]
-}
-usage: takes database path,multiple search query with corrosponding top_k(top_k represents the number of top urls to be selected) as input and
- outputs retrieved data chunks corrosponding to each search query
-
-10. generation_from_context(whether_path_or_data:string("path" or "data"),query:string,context:string):[full_answer:string,after_think_answer:string]
-usage: takes search query ,context, whether_path_or_data(its equal to "path" if context contains the file path to context and equal to 
-"data" if context contains the exact context) as input and outputs the answer of search query
-
-11. file_checker(file_path:string):updated_file_path:string
-usage: checks whether a file path exists or not, if it doesnt exists then updated_file_path=file_path but if it does originally exist,
-it outputs another file path which earlier didnt exist
-
-12. vidoes_to_text(video_links:string[]):list of {
-  video_link:string,
-  transcript:string
-}
-usage: takes multiple video links as input and outputs video transcript corrosponding to each
-
-13. audio_to_text(audio_links:string[]):list of {
-  audio_link:string,
-  transcript:string
-}
-usage: takes multiple audio links as input and outputs audio transcript corrosponding to each
-
-14. question_answer(query:string):answer:string
-usage: takes a query as input and outputs answer
-
-15. summarise(text:string):summary:string
-usage: takes text as input and outputs its summary
-
-16. execuete_file(file_path:string,language:string<python/c/c++>):output:string
-usage:execuetes the file whose file path is given as input and outputs the stdout string from the execueted file
+# ACTUAL WORKING MEMORY STATE (Real Input)
+{{STATE}}
 
 # YOUR TASK
 output a list of stateUpdationObjects to update the working memory state such that:
@@ -187,10 +116,3 @@ output a list of stateUpdationObjects to update the working memory state such th
 9. things_to_note:can add a thing to note if needed or can skip it if not needed
 10. current_function_to_execute: update according to chosen plan
 11. final_goal_completed: initialise to "no"
-
-# CRITICAL RULES
-1. Your final output MUST only contain a list of jsons and no extra content.
-2. only use tools which are provided in AVAILABLE TOOLS section, dont invent tool of your own
-3. **Consistency:** Ensure `serial_number` fields increment logically if you add new items.
-4. **Reasoning:** Before outputting the JSON, you may perform internal chain-of-thought, but the final output must be ONLY the JSON object.
-

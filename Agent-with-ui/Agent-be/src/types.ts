@@ -130,13 +130,7 @@ export type historySchemaType={
         before_think:string,
         after_think:string,
         timestamp:Date
-    }],
-    summaries:[
-        {
-            description:string,
-            content:string
-        }
-    ]
+    }]
 }
 
 export type userSchemaType={
@@ -146,10 +140,18 @@ export type userSchemaType={
 
 export type episodicMemorySchemaType={
     username:String,
-    title:String,
     memories:[{
+        serial_number:Number,
         description:String,
         content:String
+    }]
+}
+
+export type episodicMemoryDescriptionsSchemaType={
+    username:String,
+    memory_descriptions:[{
+        serial_number:Number,
+        description:String
     }]
 }
 
@@ -186,15 +188,9 @@ export type roughPlanToReachGoalType={
     status:string
 }
 
-export type summariesType={
+export type variablesType={
     serial_number:number,
-    description:string,
-    content:string,
-    filter_words:string[]
-}
-
-export type urlsType={
-    serial_number:number,
+    variable_type:string,
     description:string,
     content:string,
     filter_words:string[]
@@ -224,14 +220,14 @@ export type thingsToNoteType={
     content:string
 }
 
-export type anyUpdateType=chatHistoryType|addPreviousActionsAndLogsType|roughPlanToReachGoalType|summariesType|
+export type anyUpdateType=chatHistoryType|addPreviousActionsAndLogsType|roughPlanToReachGoalType|variablesType|
 envStateType|episodicMemoryDescriptionsType|currentFunctionToExecueteType|thingsToNoteType|string
 
 export const listFieldValues = [
   "chat_history",
   "previous_actions_and_logs",
   "rough_plan_to_reach_goal",
-  "summaries",
+  "variables",
   "env_state",
   "episodic_memory_descriptions",
   "current_function_to_execuete",
@@ -267,14 +263,9 @@ export type roughPlanToReachGoalPair={
     updated:roughPlanToReachGoalPair
 }
 
-export type summariesPair={
-    field:"summaries",
-    updated:summariesType
-}
-
-export type urlsPair={
-    field:"urls",
-    updated:urlsType
+export type variablesPair={
+    field:"variables",
+    updated:variablesType
 }
 
 export type envStatePair={
@@ -297,7 +288,7 @@ export type thingsToNotePair={
     updated:thingsToNoteType
 }
 
-export type listPair=chatHistoryPair|PreviousActionsAndLogsPair|roughPlanToReachGoalPair|summariesPair|envStatePair|
+export type listPair=chatHistoryPair|PreviousActionsAndLogsPair|roughPlanToReachGoalPair|variablesPair|envStatePair|
 episodicMemoryDescriptionsPair|currentFunctionToExecuetePair|thingsToNotePair
 
 export type anyPair=listPair|stringPair
@@ -307,13 +298,29 @@ export type workingMemorySchemaType={
     final_goal:string,
     current_goal:string,
     rough_plan_to_reach_goal:roughPlanToReachGoalType[],
-    summaries:summariesType[],
-    urls:urlsType[],
+    variables:variablesType[],
     env_state:envStateType[],
     episodic_memory_descriptions:episodicMemoryDescriptionsType[],
     current_function_to_execuete:currentFunctionToExecueteType,
     things_to_note:thingsToNoteType[],
-    final_goal_completed:boolean
+    final_goal_completed:string
+}
+
+export type workingMemoryWithUserSchemaType={
+    username:String,
+    title:String,
+    model:String,
+    chat_history:chatHistoryType[],
+    previous_actions_and_logs:addPreviousActionsAndLogsType[],
+    final_goal:string,
+    current_goal:string,
+    rough_plan_to_reach_goal:roughPlanToReachGoalType[],
+    variables:variablesType[],
+    env_state:envStateType[],
+    episodic_memory_descriptions:episodicMemoryDescriptionsType[],
+    current_function_to_execuete:currentFunctionToExecueteType,
+    things_to_note:thingsToNoteType[],
+    final_goal_completed:string
 }
 
 export type Message={
@@ -384,22 +391,27 @@ export type stateObjectType={
     state:workingMemorySchemaType
 }
 export type stateUpdationObjectType={
-    stateUpdationObject:stateUpdationType[]
+    stateUpdationObject:stateUpdationType[],
+    valid:boolean
 }
 
 export type resoningResponseType={
-    stateUpdationObject:stateUpdationType[]
+    stateUpdationObject:stateUpdationType[],
+    valid:boolean
 }
 
 export type execueteResponseType={
     log:string,
-    stateUpdationObject:stateUpdationType[]
+    stateUpdationObject:stateUpdationType[],
+    valid:boolean
 }
 
 export type makeLogResponseType={
-    stateUpdationObject:stateUpdationType[]
+    stateUpdationObject:stateUpdationType[],
+    valid:boolean
 }
 
 export type updateWorkingMemoryResponseType={
-    stateUpdationObject:stateUpdationType[]
+    stateUpdationObject:stateUpdationType[],
+    valid:boolean
 }
