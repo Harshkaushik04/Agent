@@ -36,11 +36,16 @@ function requestApprovalStateAndUpdation(ws, username, state, stateUpdationObjec
         // const state_string=JSON.stringify(state)
         // const state_updation_string=JSON.stringify(stateUpdationObject)
         console.log(`[requestApprovalStateAndUpdation] sending approval message to frontend`);
-        ws.send(JSON.stringify({
-            eventType: "approval",
-            state: state,
-            stateUpdationObject: stateUpdationObject
-        }));
+        try {
+            ws.send(JSON.stringify({
+                eventType: "approval",
+                state: state,
+                stateUpdationObject: stateUpdationObject
+            }));
+        }
+        catch (e) {
+            console.log(`Error:${e}`);
+        }
         return new Promise((resolve) => {
             pendingApprovals.set(username, resolve);
         });
@@ -106,11 +111,8 @@ wss.on("connection", function (ws) {
             throw new Error("[server.ts]WebSocket Check: wrong jwt token");
         }
         const username = decryptedData.username;
-        if (!usernameToWebSocket.get(username)) {
-            console.log(`username:${username} websocket registered`);
-            usernameToWebSocket.set(username, ws);
-            webSocketToUsername.set(ws, username);
-        }
+        usernameToWebSocket.set(username, ws);
+        webSocketToUsername.set(ws, username);
         if (json_message.eventType == "approval") {
             const resolve = pendingApprovals.get(username);
             if (!resolve) {
@@ -429,6 +431,11 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
     feedback = "";
     approved = false;
     while (!approved) {
+        console.log("request:");
+        console.log("state:", state);
+        console.log("feedback:", feedback);
+        console.log("model:", model);
+        console.log("chat_number:", chat_number);
         resp = yield axios.post("http://localhost:5000/generate-working-memory", {
             state: state,
             feedback: feedback,
@@ -438,7 +445,9 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
         stateUpdateObj = resp.data.stateUpdationObject;
         yield requestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj);
     }
-    updateState(state, stateUpdateObj);
+    console.log(`stateUpdateObj:`, stateUpdateObj);
+    state = updateState(state, stateUpdateObj);
+    console.log(`state updated to:`, state);
     saveStateToStateWithUser(state, stateWithUser);
     let log = "";
     while (state.final_goal_completed != "yes") {
@@ -454,7 +463,8 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
             stateUpdateObj = resp1.data.stateUpdationObject;
             yield requestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj);
         }
-        updateState(state, stateUpdateObj);
+        state = updateState(state, stateUpdateObj);
+        console.log(`state updated to:`, state);
         saveStateToStateWithUser(state, stateWithUser);
         approved = false;
         feedback = "";
@@ -469,7 +479,8 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
             stateUpdateObj = resp2.data.stateUpdationObject;
             yield requestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj);
         }
-        updateState(state, stateUpdateObj);
+        state = updateState(state, stateUpdateObj);
+        console.log(`state updated to:`, state);
         saveStateToStateWithUser(state, stateWithUser);
         approved = false;
         feedback = "";
@@ -484,7 +495,8 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
             stateUpdateObj = resp3.data.stateUpdationObject;
             yield requestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj);
         }
-        updateState(state, stateUpdateObj);
+        state = updateState(state, stateUpdateObj);
+        console.log(`state updated to:`, state);
         saveStateToStateWithUser(state, stateWithUser);
         approved = false;
         feedback = "";
@@ -498,7 +510,8 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
             stateUpdateObj = resp4.data.stateUpdationObject;
             yield requestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj);
         }
-        updateState(state, stateUpdateObj);
+        state = updateState(state, stateUpdateObj);
+        console.log(`state updated to:`, state);
         saveStateToStateWithUser(state, stateWithUser);
     }
     //generate-working-memory
@@ -541,10 +554,13 @@ function isListFieldType(x) {
 function isStringFieldType(x) {
     return CustomTypes.stringFieldValues.includes(x);
 }
+function isObjectFieldType(x) {
+    return CustomTypes.objectFieldValues.includes(x);
+}
 //to complete
 function updateState(state, state_updation_object) {
     for (const upd of state_updation_object) {
-        if (upd.updateType == "delete") {
+        if (upd.type == "delete") {
             if (isListFieldType(upd.field)) {
                 const arr = state[upd.field];
                 if (!Array.isArray(arr)) {
@@ -556,8 +572,15 @@ function updateState(state, state_updation_object) {
                 // @ts-ignore
                 state[upd.field] = "";
             }
+            else if (isObjectFieldType(upd.field)) {
+                //@ts-ignore
+                state[upd.field] = {
+                    function_name: "",
+                    inputs: {}
+                };
+            }
         }
-        else if (upd.updateType == "add") {
+        else if (upd.type == "add") {
             if (isListFieldType(upd.field)) {
                 const arr = state[upd.field];
                 if (!Array.isArray(arr)) {
@@ -570,8 +593,12 @@ function updateState(state, state_updation_object) {
                 //@ts-ignore
                 state[upd.field] = upd.updated;
             }
+            else if (isObjectFieldType(upd.field)) {
+                //@ts-ignore
+                state[upd.field] = upd.updated;
+            }
         }
-        else if (upd.updateType == "update") {
+        else if (upd.type == "update") {
             if (isListFieldType(upd.field)) {
                 const arr = state[upd.field];
                 if (!Array.isArray(arr)) {
@@ -581,6 +608,10 @@ function updateState(state, state_updation_object) {
                 arr[upd.serial_number] = upd.updated;
             }
             else if (isStringFieldType(upd.field)) {
+                //@ts-ignore
+                state[upd.field] = upd.updated;
+            }
+            else if (isObjectFieldType(upd.field)) {
                 //@ts-ignore
                 state[upd.field] = upd.updated;
             }

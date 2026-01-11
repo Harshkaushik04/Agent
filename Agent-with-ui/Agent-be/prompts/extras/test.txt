@@ -5,7 +5,7 @@ You are part of an agentic workflow which consists of working memory(state),epis
 # INPUT DATA
 You will be provided with:
 1. Initial State: initial state of working memory would be given
-2. Available Tools: A list of functions you can execute to interact with the world.
+2. Available Tools: A list of functions you can execuete to interact with the world.
 3. Chat history: list of user prompts and your final responses to the user
 
 # EXPLANATION OF WORKING MEMORY SCHEMA
@@ -69,7 +69,7 @@ list of json objects of form:{
   content:<content>
 }
 
-10. current_function_to_execute:{
+10. current_function_to_execuete:{
   function_name:<exact function name>,
   inputs:the inputs to be given as argument to the function, this is form of dictionary with key value pair
 }
@@ -187,7 +187,7 @@ for initial working state:
   "env_state": [],
   "episodic_memory_descriptions": [],
   "things_to_note": [],
-  "current_function_to_execute": {
+  "current_function_to_execuete": {
     "function_name": "",
     "inputs": {}
   },
@@ -301,7 +301,7 @@ output should be like this:
   },
   {
     "type": "update",
-    "field": "current_function_to_execute",
+    "field": "current_function_to_execuete",
     "serial_number": 0,
     "updated": {
       "function_name": "search_query_generation",
@@ -309,6 +309,12 @@ output should be like this:
         "sentences": ["difference between python and c++", "python vs c++ pros and cons"]
       }
     }
+  },
+  {
+    "type":"update",
+    "field":"final_goal_completed",
+    "serial_number":0,
+    "updated":"no"
   }
 ]
 ### END OF EXAMPLE ###
@@ -328,7 +334,7 @@ output should be like this:
   "env_state": [],
   "episodic_memory_descriptions": [],
   "things_to_note": [],
-  "current_function_to_execute": {
+  "current_function_to_execuete": {
     "function_name": "",
     "inputs": {}
   },
@@ -346,8 +352,8 @@ output a list of stateUpdationObjects to update the working memory state such th
 7. env_state: keep same
 8. episodic_memory_descriptions:keep same
 9. things_to_note:can add a thing to note if needed or can skip it if not needed
-10. current_function_to_execute: update according to chosen plan
-11. final_goal_completed: initialise to "no"
+10. current_function_to_execuete: update according to chosen plan
+11. final_goal_completed: update to "no"
 
 # CRITICAL RULES
 1. Your final output MUST only contain a list of jsons and no extra content
