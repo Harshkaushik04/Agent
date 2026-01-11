@@ -85,3 +85,7 @@ to be done further:
 remaining:
 -prompts
 -tools
+
+12 jan 2026:
+currently integrating website frontend websockets and other stuff, testing prompts 
+next issue to resolve: working memory schema for node backend to python backend is bit different so encountering 422 error, so fix "updateState" function from server.ts
