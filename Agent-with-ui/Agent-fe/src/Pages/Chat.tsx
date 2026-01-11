@@ -6,14 +6,15 @@ import * as CustomTypes from '../types'
 import { useHtmlTextAreaRef } from "../hooks/useHtmlTextAreaRef";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { useRef } from "react";
+import type { NavigateFunction } from "react-router-dom";
 
 function Chat() {
     const ctx=useChat()
     const socket=useWebSocket()
-    const Navigate=ctx.Navigate
-    const setHistoryTitles=ctx.setHistoryTitles
-    const historyTitles=ctx.historyTitles
-    const historyChat=ctx.historyChat
+    const Navigate:NavigateFunction=ctx.Navigate
+    const setHistoryTitles:React.Dispatch<React.SetStateAction<string[]>>=ctx.setHistoryTitles
+    const historyTitles:string[]=ctx.historyTitles
+    const historyChat:CustomTypes.messageType[]=ctx.historyChat
     async function loadHistoryTitles(model:string="DeepSeek-R1-Distill-Qwen-7B-Q4_K_M"){
         const res=await axios.post<CustomTypes.loadHistoryTitlesType>("http://localhost:3000/load-history-titles",{
           model:model
@@ -69,43 +70,41 @@ function Chat() {
       if(!local_token){
         throw new Error("[Chat.tsx]token not found")
       }
-      if(socket && socket!.readyState==WebSocket.OPEN){
-          socket!.onmessage=(msg:MessageEvent<string>)=>{
-              const parsedMessage:CustomTypes.wsToFrontend=JSON.parse(msg.data)
-              if(parsedMessage.eventType=="approval"){
-                  const state:CustomTypes.workingMemorySchemaType=parsedMessage.state
-                  const stateUpdationObject=parsedMessage.stateUpdationObject
-                  let content=""
-                  if(!stateUpdationObject){
-                    content=JSON.stringify([state])  
-                  }
-                  else{
-                    content=JSON.stringify([state,stateUpdationObject])
-                  }
-                  setExtraContent((prev:CustomTypes.ApprovalMessageType[])=>{
-                    return [...prev,{
-                      content:content,
-                      isDone:false,
-                      approved:false
-                    }]
-                  })
-              }
-              // else if(parsedMessage.eventType=="showOutput"){
-              //   setExtraContent((prev:CustomTypes.ApprovalMessageType[])=>{
-              //     return [...prev,{
-              //       content:message,
-              //       isDone:true,
-              //       approved:true
-              //     }]
-              //   })
-              // }
-          }
+      if(!socket){
+        return;
       }
-      if(socket && socket!.readyState==WebSocket.OPEN){
+      function handleMessage(msg:MessageEvent<string>){
+        console.log(`[ws-message] message recieved`)
+        const parsedMessage:CustomTypes.wsToFrontend=JSON.parse(msg.data)
+        if(parsedMessage.eventType=="approval"){
+            const state:CustomTypes.workingMemorySchemaType=parsedMessage.state
+            const stateUpdationObject=parsedMessage.stateUpdationObject
+            let content=""
+            if(!stateUpdationObject){
+              content=JSON.stringify([state])  
+            }
+            else{
+              content=JSON.stringify([state,stateUpdationObject])
+            }
+            setExtraContent((prev:CustomTypes.ApprovalMessageType[])=>{
+              return [...prev,{
+                content:content,
+                isDone:false,
+                approved:false
+              }]
+            })
+        }
+      }
+      socket.addEventListener("message",handleMessage)
+      if(socket!.readyState==WebSocket.OPEN){
         handleConnect()
       }
       else{
-        socket?.addEventListener("open",handleConnect)
+        socket.addEventListener("open",handleConnect)
+      }
+      return ()=>{
+        socket.removeEventListener("open",handleConnect)
+        socket.removeEventListener("message",handleMessage)
       }
     },[socket])
 
@@ -286,6 +285,7 @@ function ChatRenderer({ messages}:CustomTypes.chatMessagesType) {
   const ctx=useChat()
   const extraContent=ctx.extraContent
   const setExtraContent=ctx.setExtraContent
+  const socket=useWebSocket()
   async function sendMessage(){
     setExtraContent((prev:CustomTypes.ApprovalMessageType[])=>{
       const allExceptLast = prev.slice(0, -1);
@@ -302,7 +302,6 @@ function ChatRenderer({ messages}:CustomTypes.chatMessagesType) {
       }
       return [...allExceptLast,last]
     })
-    const socket=useWebSocket()
 
     if(socket && socket!.readyState==WebSocket.OPEN){
       const local_token=localStorage.getItem("token")
@@ -364,11 +363,15 @@ function ChatRenderer({ messages}:CustomTypes.chatMessagesType) {
           {extraContent?.map((msg,index)=>(
             <div key={index}>
               <div style={{color:"pink"}}>{msg.content}</div>
-              ({!msg.isDone})&&(<div><input ref={input_ref} placeholder="approve?"></input></div>
+              {!msg.isDone&&(<><div><input ref={input_ref} placeholder="approve?"></input></div>
                                 <div><input ref={feedback_ref} placeholder="feedback?"></input></div>
-                                <div><button onClick={async ()=>{await sendMessage()}}>Send</button></div>)
-              ({msg.approved}&&(<div style={{color:"orange"}}>APPROVED</div>))
-              ({!msg.approved}&&(<div style={{color:"orange"}}>DISAPPROVED</div>))
+                                <div><button onClick={async ()=>{await sendMessage()}}>Send</button></div></>)}
+              {msg.isDone&&
+              (<>
+              {msg.approved&&<div style={{color:"orange"}}>APPROVED</div>}
+              {!msg.approved&&<div style={{color:"orange"}}>DISAPPROVED</div>}
+              </>)
+              }
             </div>
           ))}
       </div>

@@ -34,11 +34,16 @@ async function requestApprovalStateAndUpdation(ws: WebSocket, username: string, 
     // const state_string=JSON.stringify(state)
     // const state_updation_string=JSON.stringify(stateUpdationObject)
     console.log(`[requestApprovalStateAndUpdation] sending approval message to frontend`)
-    ws.send(JSON.stringify({
-        eventType: "approval",
-        state:state,
-        stateUpdationObject:stateUpdationObject
-    }));
+    try{
+        ws.send(JSON.stringify({
+            eventType: "approval",
+            state:state,
+            stateUpdationObject:stateUpdationObject
+        }));
+    }
+    catch(e){
+        console.log(`Error:${e}`)
+    }
     return new Promise((resolve) => {
         pendingApprovals.set(username, resolve);
     });
@@ -102,11 +107,8 @@ wss.on("connection",function(ws:WebSocket){
             throw new Error("[server.ts]WebSocket Check: wrong jwt token")
         }
         const username=decryptedData.username
-        if(!usernameToWebSocket.get(username)){
-            console.log(`username:${username} websocket registered`)
-            usernameToWebSocket.set(username,ws)
-            webSocketToUsername.set(ws,username)
-        }
+        usernameToWebSocket.set(username,ws)
+        webSocketToUsername.set(ws,username)
         if(json_message.eventType=="approval"){
             const resolve=pendingApprovals.get(username)
             if(!resolve){
@@ -432,6 +434,11 @@ app.post("/send-message",async (req:Request,res:Response)=>{
     feedback=""
     approved=false
     while(!approved){
+        // console.log("request:")
+        // console.log("state:",state)
+        // console.log("feedback:",feedback)
+        // console.log("model:",model)
+        // console.log("chat_number:",chat_number)
         resp=await axios.post<CustomTypes.stateUpdationObjectType>("http://localhost:5000/generate-working-memory",{
             state:state,
             feedback:feedback,
@@ -441,7 +448,9 @@ app.post("/send-message",async (req:Request,res:Response)=>{
         stateUpdateObj=resp.data.stateUpdationObject
         await requestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj)
     }
-    updateState(state,stateUpdateObj)
+    console.log(`stateUpdateObj:`,stateUpdateObj)
+    state=updateState(state,stateUpdateObj)
+    console.log(`state updated to:`,state)
     saveStateToStateWithUser(state,stateWithUser)
     let log=""
     while(state.final_goal_completed!="yes"){
@@ -457,7 +466,8 @@ app.post("/send-message",async (req:Request,res:Response)=>{
             stateUpdateObj=resp1.data.stateUpdationObject
             await requestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj)
         }
-        updateState(state,stateUpdateObj)
+        state=updateState(state,stateUpdateObj)
+        console.log(`state updated to:`,state)
         saveStateToStateWithUser(state,stateWithUser)
         approved=false
         feedback=""
@@ -472,7 +482,8 @@ app.post("/send-message",async (req:Request,res:Response)=>{
             stateUpdateObj=resp2.data.stateUpdationObject
             await requestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj)
         }
-        updateState(state,stateUpdateObj)
+        state=updateState(state,stateUpdateObj)
+        console.log(`state updated to:`,state)
         saveStateToStateWithUser(state,stateWithUser)
         approved=false
         feedback=""
@@ -487,7 +498,8 @@ app.post("/send-message",async (req:Request,res:Response)=>{
             stateUpdateObj=resp3.data.stateUpdationObject
             await requestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj)
         }
-        updateState(state,stateUpdateObj)
+        state=updateState(state,stateUpdateObj)
+        console.log(`state updated to:`,state)
         saveStateToStateWithUser(state,stateWithUser)
         approved=false
         feedback=""
@@ -501,7 +513,8 @@ app.post("/send-message",async (req:Request,res:Response)=>{
             stateUpdateObj=resp4.data.stateUpdationObject
             await requestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj)
         }
-        updateState(state,stateUpdateObj)
+        state=updateState(state,stateUpdateObj)
+        console.log(`state updated to:`,state)
         saveStateToStateWithUser(state,stateWithUser)
     }
     //generate-working-memory
@@ -545,10 +558,13 @@ function isListFieldType(x: string): x is CustomTypes.listFieldType {
 function isStringFieldType(x: string): x is CustomTypes.listFieldType {
   return CustomTypes.stringFieldValues.includes(x as CustomTypes.stringFieldType);
 }
+function isObjectFieldType(x: string): x is CustomTypes.objectFieldType {
+    return CustomTypes.objectFieldValues.includes(x as CustomTypes.objectFieldType)
+}
 //to complete
 function updateState(state:CustomTypes.workingMemorySchemaType,state_updation_object:CustomTypes.stateUpdationType[]){
     for(const upd of state_updation_object){
-        if(upd.updateType=="delete"){
+        if(upd.type=="delete"){
             if (isListFieldType(upd.field)) {
                 const arr = state[upd.field];
                 if (!Array.isArray(arr)) {
@@ -560,8 +576,15 @@ function updateState(state:CustomTypes.workingMemorySchemaType,state_updation_ob
                 // @ts-ignore
                 state[upd.field] = "";
             }
+            else if(isObjectFieldType(upd.field)){
+                //@ts-ignore
+                state[upd.field]={
+                    function_name:"",
+                    inputs:{}
+                }
+            }
         }
-        else if(upd.updateType=="add"){
+        else if(upd.type=="add"){
             if(isListFieldType(upd.field)){
                 const arr=state[upd.field]
                 if(!Array.isArray(arr)){
@@ -574,8 +597,12 @@ function updateState(state:CustomTypes.workingMemorySchemaType,state_updation_ob
                 //@ts-ignore
                 state[upd.field] = upd.updated
             }
+            else if(isObjectFieldType(upd.field)){
+                //@ts-ignore
+                state[upd.field]=upd.updated
+            }
         }
-        else if(upd.updateType=="update"){
+        else if(upd.type=="update"){
             if(isListFieldType(upd.field)){
                 const arr=state[upd.field]
                 if(!Array.isArray(arr)){
@@ -585,6 +612,10 @@ function updateState(state:CustomTypes.workingMemorySchemaType,state_updation_ob
                 arr[upd.serial_number]=upd.updated
             }
             else if(isStringFieldType(upd.field)){
+                //@ts-ignore
+                state[upd.field]=upd.updated
+            }
+            else if(isObjectFieldType(upd.field)){
                 //@ts-ignore
                 state[upd.field]=upd.updated
             }

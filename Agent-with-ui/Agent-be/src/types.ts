@@ -230,10 +230,14 @@ export const listFieldValues = [
   "variables",
   "env_state",
   "episodic_memory_descriptions",
-  "current_function_to_execuete",
   "things_to_note",
 ] as const;
 export type listFieldType = typeof listFieldValues[number];
+
+export const objectFieldValues=[
+    "current_function_to_execuete"
+]
+export type objectFieldType= typeof objectFieldValues[number];
 
 
 export const stringFieldValues =[
@@ -372,17 +376,17 @@ export type wsToBackend=wsToBackend_approval|wsToBackend_connect
 //state updation 
 // for fields function_to_execuete,current_goal,final_goal => serial_number=0
 export type deleteAnyType={
-    updateType:"delete",
+    type:"delete",
     field:anyFieldType,
     serial_number:number
 }
 
 export type addAnyType={
-    updateType:"add"
+    type:"add"
 }& anyPair
 
 export type updateAnyType={
-    updateType:"update",
+    type:"update",
     serial_number:number,
 }& anyPair
 

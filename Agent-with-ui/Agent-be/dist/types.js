@@ -5,8 +5,10 @@ export const listFieldValues = [
     "variables",
     "env_state",
     "episodic_memory_descriptions",
-    "current_function_to_execuete",
     "things_to_note",
+];
+export const objectFieldValues = [
+    "current_function_to_execuete"
 ];
 export const stringFieldValues = [
     "final_goal",
