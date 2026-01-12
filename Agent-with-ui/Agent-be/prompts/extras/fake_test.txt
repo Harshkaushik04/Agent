@@ -1,0 +1,125 @@
+just output the following, nothing less nothing more(exactly this) and no extra words(ALSO DONT PRINT EXTRA ```json or anything)
+
+[
+  {
+    "type": "update",
+    "field": "final_goal",
+    "serial_number": 0,
+    "updated": "Determine if Samay Rains and Harkirat Singh are friends."
+  },
+  {
+    "type": "update",
+    "field": "current_goal",
+    "serial_number": 0,
+    "updated": "Search for information about Samay Rains and Harkirat Singh's relationship."
+  },
+  {
+    "type": "add",
+    "field": "rough_plan_to_reach_goal",
+    "serial_number": 1,
+    "updated": {
+      "serial_number": 1,
+      "description": "Generate search queries to find information about Samay Rains and Harkirat Singh's relationship.",
+      "function_name": "search_query_generation",
+      "inputs": {
+        "sentences": ["Samay Rains and Harkirat Singh relationship"]
+      },
+      "brief_expected_outputs": ["search queries"],
+      "status": "ongoing"
+    }
+  },
+  {
+    "type": "add",
+    "field": "rough_plan_to_reach_goal",
+    "serial_number": 2,
+    "updated": {
+      "serial_number": 2,
+      "description": "Search for information about their relationship using generated queries.",
+      "function_name": "search_engine_1",
+      "inputs": {
+        "list_search_query_top_k": []
+      },
+      "brief_expected_outputs": ["list of urls"],
+      "status": "not_done"
+    }
+  },
+  {
+    "type": "add",
+    "field": "rough_plan_to_reach_goal",
+    "serial_number": 3,
+    "updated": {
+      "serial_number": 3,
+      "description": "Download raw HTML from the found URLs.",
+      "function_name": "search_engine_2",
+      "inputs": {
+        "urls": []
+      },
+      "brief_expected_outputs": ["raw html file paths"],
+      "status": "not_done"
+    }
+  },
+  {
+    "type": "add",
+    "field": "rough_plan_to_reach_goal",
+    "serial_number": 4,
+    "updated": {
+      "serial_number": 4,
+      "description": "Clean the downloaded HTML files.",
+      "function_name": "html_cleaner",
+      "inputs": {
+        "list_url_file_path_json": []
+      },
+      "brief_expected_outputs": ["cleaned html file paths"],
+      "status": "not_done"
+    }
+  },
+  {
+    "type": "add",
+    "field": "rough_plan_to_reach_goal",
+    "serial_number": 5,
+    "updated": {
+      "serial_number": 5,
+      "description": "Merge all cleaned HTML files into one context file.",
+      "function_name": "merge_files",
+      "inputs": {
+        "file_paths": []
+      },
+      "brief_expected_outputs": ["merged file path"],
+      "status": "not_done"
+    }
+  },
+  {
+    "type": "add",
+    "field": "rough_plan_to_reach_goal",
+    "serial_number": 6,
+    "updated": {
+      "serial_number": 6,
+      "description": "Generate the final answer summarizing the information.",
+      "function_name": "generation_from_context",
+      "inputs": {
+        "whether_path_or_data": "path",
+        "query": "What is the relationship between Samay Rains and Harkirat Singh?",
+        "context": ""
+      },
+      "brief_expected_outputs": ["full_answer", "after_think_answer"],
+      "status": "not_done"
+    }
+  },
+  {
+    "type": "update",
+    "field": "current_function_to_execuete",
+    "serial_number": 0,
+    "updated": {
+      "function_name": "search_query_generation",
+      "inputs": {
+        "sentences": ["Samay Rains and Harkirat Singh relationship"]
+      }
+    }
+  },
+  {
+    "type": "update",
+    "field": "final_goal_completed",
+    "serial_number": 0,
+    "updated": "no"
+  }
+]

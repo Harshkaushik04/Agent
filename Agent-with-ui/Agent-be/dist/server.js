@@ -64,19 +64,86 @@ function requestApprovalState(ws, username, state) {
         });
     });
 }
+// function stateWithUserToState(stateWithUser:HydratedDocument<CustomTypes.workingMemoryWithUserSchemaType>):CustomTypes.workingMemorySchemaType{
+//     let state:CustomTypes.workingMemorySchemaType={
+//         chat_history:stateWithUser.chat_history,
+//         previous_actions_and_logs: stateWithUser.previous_actions_and_logs,
+//         final_goal: stateWithUser.final_goal,
+//         current_goal: stateWithUser.current_goal,
+//         rough_plan_to_reach_goal: stateWithUser.rough_plan_to_reach_goal,
+//         variables:stateWithUser.variables,
+//         env_state: stateWithUser.env_state,
+//         episodic_memory_descriptions: stateWithUser.episodic_memory_descriptions,
+//         current_function_to_execuete: stateWithUser.current_function_to_execuete,
+//         things_to_note: stateWithUser.things_to_note,
+//         final_goal_completed: stateWithUser.final_goal_completed
+//     }
+//     return state
+// }
 function stateWithUserToState(stateWithUser) {
+    var _a, _b;
+    // Helper to convert Mongoose Maps to plain Objects (fixes "inputs: {}" bug)
+    const mapToObject = (map) => {
+        if (map instanceof Map)
+            return Object.fromEntries(map);
+        if (typeof map === 'object' && map !== null)
+            return map;
+        return {};
+    };
     let state = {
-        chat_history: stateWithUser.chat_history,
-        previous_actions_and_logs: stateWithUser.previous_actions_and_logs,
+        // 1. Simple Strings (Direct copy)
         final_goal: stateWithUser.final_goal,
         current_goal: stateWithUser.current_goal,
-        rough_plan_to_reach_goal: stateWithUser.rough_plan_to_reach_goal,
-        variables: stateWithUser.variables,
-        env_state: stateWithUser.env_state,
-        episodic_memory_descriptions: stateWithUser.episodic_memory_descriptions,
-        current_function_to_execuete: stateWithUser.current_function_to_execuete,
-        things_to_note: stateWithUser.things_to_note,
-        final_goal_completed: stateWithUser.final_goal_completed
+        final_goal_completed: stateWithUser.final_goal_completed,
+        // 2. Arrays: Map and reconstruct to remove _id
+        chat_history: stateWithUser.chat_history.map(chat => ({
+            serial_number: chat.serial_number,
+            role: chat.role,
+            content: chat.content
+        })),
+        previous_actions_and_logs: stateWithUser.previous_actions_and_logs.map(action => ({
+            serial_number: action.serial_number,
+            description: action.description,
+            function_name: action.function_name,
+            inputs: mapToObject(action.inputs), // Convert Map -> Object
+            outputs: mapToObject(action.outputs),
+            log: action.log,
+            filter_words: action.filter_words
+        })),
+        rough_plan_to_reach_goal: stateWithUser.rough_plan_to_reach_goal.map(plan => ({
+            serial_number: plan.serial_number,
+            description: plan.description,
+            function_name: plan.function_name,
+            inputs: mapToObject(plan.inputs), // Convert Map -> Object
+            brief_expected_outputs: plan.brief_expected_outputs,
+            status: plan.status
+        })),
+        variables: stateWithUser.variables.map(variable => ({
+            serial_number: variable.serial_number,
+            variable_type: variable.variable_type,
+            description: variable.description,
+            content: variable.content,
+            filter_words: variable.filter_words
+        })),
+        env_state: stateWithUser.env_state.map(env => ({
+            serial_number: env.serial_number,
+            description: env.description,
+            content: env.content
+        })),
+        episodic_memory_descriptions: stateWithUser.episodic_memory_descriptions.map(mem => ({
+            serial_number: mem.serial_number,
+            description: mem.description
+        })),
+        things_to_note: stateWithUser.things_to_note.map(note => ({
+            serial_number: note.serial_number,
+            description: note.description,
+            content: note.content
+        })),
+        // 3. Single Nested Object
+        current_function_to_execuete: {
+            function_name: ((_a = stateWithUser.current_function_to_execuete) === null || _a === void 0 ? void 0 : _a.function_name) || "",
+            inputs: mapToObject((_b = stateWithUser.current_function_to_execuete) === null || _b === void 0 ? void 0 : _b.inputs)
+        }
     };
     return state;
 }
@@ -431,11 +498,11 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
     feedback = "";
     approved = false;
     while (!approved) {
-        console.log("request:");
-        console.log("state:", state);
-        console.log("feedback:", feedback);
-        console.log("model:", model);
-        console.log("chat_number:", chat_number);
+        // console.log("request:")
+        // console.log("state:",state)
+        // console.log("feedback:",feedback)
+        // console.log("model:",model)
+        // console.log("chat_number:",chat_number)
         resp = yield axios.post("http://localhost:5000/generate-working-memory", {
             state: state,
             feedback: feedback,
@@ -446,6 +513,7 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
         yield requestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj);
     }
     console.log(`stateUpdateObj:`, stateUpdateObj);
+    console.log(`old state:`, state);
     state = updateState(state, stateUpdateObj);
     console.log(`state updated to:`, state);
     saveStateToStateWithUser(state, stateWithUser);
@@ -559,7 +627,7 @@ function isObjectFieldType(x) {
 }
 //to complete
 function updateState(state, state_updation_object) {
-    for (const upd of state_updation_object) {
+    for (let upd of state_updation_object) {
         if (upd.type == "delete") {
             if (isListFieldType(upd.field)) {
                 const arr = state[upd.field];
@@ -586,6 +654,7 @@ function updateState(state, state_updation_object) {
                 if (!Array.isArray(arr)) {
                     throw new Error(`Field ${upd.field} is not an array`);
                 }
+                console.log(`upd.updated:`, upd.updated);
                 //@ts-ignore
                 arr.push(upd.updated);
             }

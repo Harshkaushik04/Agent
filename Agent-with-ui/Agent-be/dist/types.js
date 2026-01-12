@@ -12,5 +12,6 @@ export const objectFieldValues = [
 ];
 export const stringFieldValues = [
     "final_goal",
-    "current_goal"
+    "current_goal",
+    "final_goal_completed"
 ];

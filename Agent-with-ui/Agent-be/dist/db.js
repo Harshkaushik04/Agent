@@ -57,11 +57,11 @@ const workingMemory = new mongoose.Schema({
             function_name: String,
             inputs: {
                 type: Map,
-                of: String
+                of: mongoose.Schema.Types.Mixed
             },
             outputs: {
                 type: Map,
-                of: String
+                of: mongoose.Schema.Types.Mixed
             },
             log: String,
             filter_words: [{ type: String, default: [] }]
@@ -71,15 +71,12 @@ const workingMemory = new mongoose.Schema({
     rough_plan_to_reach_goal: [{
             serial_number: Number,
             description: String,
-            function: String,
+            function_name: String,
             inputs: {
                 type: Map,
-                of: String
+                of: mongoose.Schema.Types.Mixed
             },
-            brief_expected_outputs: {
-                type: Map,
-                of: String
-            },
+            brief_expected_outputs: [{ type: String, default: [] }],
             status: String
         }],
     variables: [{
@@ -102,7 +99,7 @@ const workingMemory = new mongoose.Schema({
         function_name: String,
         inputs: {
             type: Map,
-            of: String
+            of: mongoose.Schema.Types.Mixed
         }
     },
     things_to_note: [{

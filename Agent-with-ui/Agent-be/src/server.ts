@@ -61,21 +61,97 @@ async function requestApprovalState(ws: WebSocket, username: string, state:Custo
     });
 }
 
-function stateWithUserToState(stateWithUser:HydratedDocument<CustomTypes.workingMemoryWithUserSchemaType>):CustomTypes.workingMemorySchemaType{
-    let state:CustomTypes.workingMemorySchemaType={
-        chat_history:stateWithUser.chat_history,
-        previous_actions_and_logs: stateWithUser.previous_actions_and_logs,
+// function stateWithUserToState(stateWithUser:HydratedDocument<CustomTypes.workingMemoryWithUserSchemaType>):CustomTypes.workingMemorySchemaType{
+//     let state:CustomTypes.workingMemorySchemaType={
+//         chat_history:stateWithUser.chat_history,
+//         previous_actions_and_logs: stateWithUser.previous_actions_and_logs,
+//         final_goal: stateWithUser.final_goal,
+//         current_goal: stateWithUser.current_goal,
+//         rough_plan_to_reach_goal: stateWithUser.rough_plan_to_reach_goal,
+//         variables:stateWithUser.variables,
+//         env_state: stateWithUser.env_state,
+//         episodic_memory_descriptions: stateWithUser.episodic_memory_descriptions,
+//         current_function_to_execuete: stateWithUser.current_function_to_execuete,
+//         things_to_note: stateWithUser.things_to_note,
+//         final_goal_completed: stateWithUser.final_goal_completed
+//     }
+//     return state
+// }
+
+function stateWithUserToState(stateWithUser: HydratedDocument<CustomTypes.workingMemoryWithUserSchemaType>): CustomTypes.workingMemorySchemaType {
+    
+    // Helper to convert Mongoose Maps to plain Objects (fixes "inputs: {}" bug)
+    const mapToObject = (map: any) => {
+        if (map instanceof Map) return Object.fromEntries(map);
+        if (typeof map === 'object' && map !== null) return map;
+        return {};
+    };
+
+    let state: CustomTypes.workingMemorySchemaType = {
+        // 1. Simple Strings (Direct copy)
         final_goal: stateWithUser.final_goal,
         current_goal: stateWithUser.current_goal,
-        rough_plan_to_reach_goal: stateWithUser.rough_plan_to_reach_goal,
-        variables:stateWithUser.variables,
-        env_state: stateWithUser.env_state,
-        episodic_memory_descriptions: stateWithUser.episodic_memory_descriptions,
-        current_function_to_execuete: stateWithUser.current_function_to_execuete,
-        things_to_note: stateWithUser.things_to_note,
-        final_goal_completed: stateWithUser.final_goal_completed
-    }
-    return state
+        final_goal_completed: stateWithUser.final_goal_completed,
+
+        // 2. Arrays: Map and reconstruct to remove _id
+        chat_history: stateWithUser.chat_history.map(chat => ({
+            serial_number: chat.serial_number,
+            role: chat.role,
+            content: chat.content
+        })),
+
+        previous_actions_and_logs: stateWithUser.previous_actions_and_logs.map(action => ({
+            serial_number: action.serial_number,
+            description: action.description,
+            function_name: action.function_name,
+            inputs: mapToObject(action.inputs), // Convert Map -> Object
+            outputs: mapToObject(action.outputs),
+            log: action.log,
+            filter_words: action.filter_words
+        })),
+
+        rough_plan_to_reach_goal: stateWithUser.rough_plan_to_reach_goal.map(plan => ({
+            serial_number: plan.serial_number,
+            description: plan.description,
+            function_name: plan.function_name,
+            inputs: mapToObject(plan.inputs),   // Convert Map -> Object
+            brief_expected_outputs: plan.brief_expected_outputs,
+            status: plan.status
+        })),
+
+        variables: stateWithUser.variables.map(variable => ({
+            serial_number: variable.serial_number,
+            variable_type: variable.variable_type,
+            description: variable.description,
+            content: variable.content,
+            filter_words: variable.filter_words
+        })),
+
+        env_state: stateWithUser.env_state.map(env => ({
+            serial_number: env.serial_number,
+            description: env.description,
+            content: env.content
+        })),
+
+        episodic_memory_descriptions: stateWithUser.episodic_memory_descriptions.map(mem => ({
+            serial_number: mem.serial_number,
+            description: mem.description
+        })),
+
+        things_to_note: stateWithUser.things_to_note.map(note => ({
+            serial_number: note.serial_number,
+            description: note.description,
+            content: note.content
+        })),
+
+        // 3. Single Nested Object
+        current_function_to_execuete: {
+            function_name: stateWithUser.current_function_to_execuete?.function_name || "",
+            inputs: mapToObject(stateWithUser.current_function_to_execuete?.inputs)
+        }
+    };
+
+    return state;
 }
 
 async function saveStateToStateWithUser(state:CustomTypes.workingMemorySchemaType,stateWithUser:HydratedDocument<CustomTypes.workingMemoryWithUserSchemaType>){
@@ -449,6 +525,7 @@ app.post("/send-message",async (req:Request,res:Response)=>{
         await requestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj)
     }
     console.log(`stateUpdateObj:`,stateUpdateObj)
+    console.log(`old state:`,state)
     state=updateState(state,stateUpdateObj)
     console.log(`state updated to:`,state)
     saveStateToStateWithUser(state,stateWithUser)
@@ -563,7 +640,7 @@ function isObjectFieldType(x: string): x is CustomTypes.objectFieldType {
 }
 //to complete
 function updateState(state:CustomTypes.workingMemorySchemaType,state_updation_object:CustomTypes.stateUpdationType[]){
-    for(const upd of state_updation_object){
+    for(let upd of state_updation_object){
         if(upd.type=="delete"){
             if (isListFieldType(upd.field)) {
                 const arr = state[upd.field];
@@ -590,6 +667,7 @@ function updateState(state:CustomTypes.workingMemorySchemaType,state_updation_ob
                 if(!Array.isArray(arr)){
                     throw new Error(`Field ${upd.field} is not an array`)
                 }
+                console.log(`upd.updated:`,upd.updated)
                 //@ts-ignore
                 arr.push(upd.updated)
             }
