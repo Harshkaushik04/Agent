@@ -212,9 +212,7 @@ export type roughPlanToReachGoalType={
     inputs:{
         [key:string]:string
     },
-    brief_expected_outputs:{
-        [key:string]:string
-    },
+    brief_expected_outputs:string[],
     status:string
 }
 
@@ -285,7 +283,8 @@ export type listFieldType = typeof listFieldValues[number];
 
 export const stringFieldValues =[
     "final_goal",
-    "current_goal"
+    "current_goal",
+    "final_goal_completed"
 ] as const
 export type stringFieldType= typeof stringFieldValues[number]
 export type anyFieldType=listFieldType|stringFieldType
@@ -307,7 +306,7 @@ export type stringPair={
 
 export type roughPlanToReachGoalPair={
     field:"rough_plan_to_reach_goal",
-    updated:roughPlanToReachGoalPair
+    updated:roughPlanToReachGoalType
 }
 
 export type summariesPair={
@@ -327,7 +326,7 @@ export type episodicMemoryDescriptionsPair={
 
 export type currentFunctionToExecuetePair={
     field:"current_function_to_execuete",
-    updated:currentFunctionToExecuetePair
+    updated:currentFunctionToExecueteType
 }
 
 export type thingsToNotePair={

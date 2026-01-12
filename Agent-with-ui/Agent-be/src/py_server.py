@@ -81,7 +81,7 @@ def load_model():
 
 def make_generate_working_memory_prompt():
     prompt=""
-    with open("../prompts/extras/test.txt") as f:
+    with open("../prompts/extras/fake_test.txt") as f:
         prompt=f.read()
     return prompt
 

@@ -21,7 +21,7 @@ class PlanStep(BaseModel):
     description: str
     function_name: str
     inputs: Dict[str, str]
-    brief_expected_outputs: Dict[str, str]
+    brief_expected_outputs: List[str]
     status: str
 
 class Variable(BaseModel):

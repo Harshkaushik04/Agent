@@ -338,7 +338,7 @@ output should be like this:
     "function_name": "",
     "inputs": {}
   },
-  "final_goal_completed": "no"
+  "final_goal_completed": "yes"
 }
 
 # YOUR TASK

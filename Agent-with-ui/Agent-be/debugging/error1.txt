@@ -1,0 +1,273 @@
+[requestApprovalStateAndUpdation] sending approval message to frontend
+stateUpdateObj: [
+  {
+    type: 'update',
+    field: 'final_goal',
+    serial_number: 0,
+    updated: {
+      final_goal: 'Determine if Samay Raina and Harkirat Singh are friends based on available information.'
+    }
+  },
+  {
+    type: 'update',
+    field: 'current_goal',
+    serial_number: 0,
+    updated: {
+      current_goal: 'Gather information to determine if Samay Raina and Harkirat Singh are friends.'
+    }
+  },
+  {
+    type: 'add',
+    field: 'rough_plan_to_reach_goal',
+    serial_number: 1,
+    updated: {
+      description: 'Generate search queries to find information about Samay Raina and Harkirat Singh relationship',
+      function_name: 'search_query_generation',
+      inputs: [Object],
+      brief_expected_outputs: [Array],
+      status: 'ongoing'
+    }
+  },
+  {
+    type: 'add',
+    field: 'rough_plan_to_reach_goal',
+    serial_number: 2,
+    updated: {
+      description: 'Search for information using generated queries',
+      function_name: 'search_engine_1',
+      inputs: [Object],
+      brief_expected_outputs: [Array],
+      status: 'not_done'
+    }
+  },
+  {
+    type: 'add',
+    field: 'rough_plan_to_reach_goal',
+    serial_number: 3,
+    updated: {
+      description: 'Download raw HTML files from URLs',
+      function_name: 'search_engine_2',
+      inputs: [Object],
+      brief_expected_outputs: [Array],
+      status: 'not_done'
+    }
+  },
+  {
+    type: 'add',
+    field: 'rough_plan_to_reach_goal',
+    serial_number: 4,
+    updated: {
+      description: 'Clean the downloaded HTML files',
+      function_name: 'html_cleaner',
+      inputs: [Object],
+      brief_expected_outputs: [Array],
+      status: 'not_done'
+    }
+  },
+  {
+    type: 'add',
+    field: 'rough_plan_to_reach_goal',
+    serial_number: 5,
+    updated: {
+      description: 'Merge cleaned HTML files into one context file',
+      function_name: 'merge_files',
+      inputs: [Object],
+      brief_expected_outputs: [Array],
+      status: 'not_done'
+    }
+  },
+  {
+    type: 'add',
+    field: 'rough_plan_to_reach_goal',
+    serial_number: 6,
+    updated: {
+      description: 'Generate the final answer summarizing the findings',
+      function_name: 'generation_from_context',
+      inputs: [Object],
+      brief_expected_outputs: [Array],
+      status: 'not_done'
+    }
+  },
+  {
+    type: 'update',
+    field: 'current_function_to_execuete',
+    serial_number: 0,
+    updated: { function_name: 'search_query_generation', inputs: [Object] }
+  },
+  {
+    type: 'update',
+    field: 'final_goal_completed',
+    serial_number: 0,
+    updated: 'no'
+  }
+]
+state updated to: {
+  chat_history: [
+    {
+      serial_number: 1,
+      role: 'user',
+      content: 'hello',
+      _id: new ObjectId('6964905372cc9f278a9afd2d')
+    }
+  ],
+  previous_actions_and_logs: [],
+  final_goal: {
+    final_goal: 'Determine if Samay Raina and Harkirat Singh are friends based on available information.'
+  },
+  current_goal: {
+    current_goal: 'Gather information to determine if Samay Raina and Harkirat Singh are friends.'
+  },
+  rough_plan_to_reach_goal: [
+    {
+      description: 'Generate search queries to find information about Samay Raina and Harkirat Singh relationship',
+      inputs: Map(0) {},
+      status: 'ongoing',
+      _id: new ObjectId('696490fc72cc9f278a9afd2f')
+    },
+    {
+      description: 'Search for information using generated queries',
+      inputs: Map(0) {},
+      status: 'not_done',
+      _id: new ObjectId('696490fc72cc9f278a9afd30')
+    },
+    {
+      description: 'Download raw HTML files from URLs',
+      inputs: Map(0) {},
+      status: 'not_done',
+      _id: new ObjectId('696490fc72cc9f278a9afd31')
+    },
+    {
+      description: 'Clean the downloaded HTML files',
+      inputs: Map(0) {},
+      status: 'not_done',
+      _id: new ObjectId('696490fc72cc9f278a9afd32')
+    },
+    {
+      description: 'Merge cleaned HTML files into one context file',
+      inputs: Map(0) {},
+      status: 'not_done',
+      _id: new ObjectId('696490fc72cc9f278a9afd33')
+    },
+    {
+      description: 'Generate the final answer summarizing the findings',
+      inputs: [Map],
+      status: 'not_done',
+      _id: new ObjectId('696490fc72cc9f278a9afd34')
+    }
+  ],
+  variables: [],
+  env_state: [],
+  episodic_memory_descriptions: [],
+  current_function_to_execuete: {
+    function_name: 'search_query_generation',
+    inputs: { sentences: [Array] }
+  },
+  things_to_note: [],
+  final_goal_completed: 'yes'
+}
+/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/document.js:3377
+    this.$__.validationError = new ValidationError(this);
+                               ^
+
+ValidationError: workingMemory validation failed: final_goal: Cast to string failed for value "{
+  final_goal: 'Determine if Samay Raina and Harkirat Singh are friends based on available information.'
+}" (type Object) at path "final_goal", current_goal: Cast to string failed for value "{
+  current_goal: 'Gather information to determine if Samay Raina and Harkirat Singh are friends.'
+}" (type Object) at path "current_goal", current_function_to_execuete.inputs.sentences: Cast to string failed for value "[
+  'Are Samay Raina and Harkirat Singh friends?',
+  'relationship between Samay Raina and Harkirat Singh'
+]" (type Array) at path "current_function_to_execuete.inputs.$*"
+    at Document.invalidate (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/document.js:3377:32)
+    at Subdocument.invalidate (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/types/subdocument.js:252:12)
+    at MongooseMap.set (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/types/map.js:181:26)
+    at MongooseMap.$__runDeferred (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/types/map.js:333:12)
+    at new MongooseMap (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/types/map.js:45:10)
+    at SchemaMap.cast (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/schema/map.js:95:12)
+    at SchemaType.applySetters (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/schemaType.js:1280:12)
+    at EmbeddedDocument.$set (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/document.js:1460:22)
+    at EmbeddedDocument.$set (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/document.js:1154:16)
+    at EmbeddedDocument.Document (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/document.js:178:12) {
+  errors: {
+    final_goal: CastError: Cast to string failed for value "{
+      final_goal: 'Determine if Samay Raina and Harkirat Singh are friends based on available information.'
+    }" (type Object) at path "final_goal"
+        at SchemaString.cast (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/schema/string.js:609:11)
+        at SchemaType.applySetters (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/schemaType.js:1280:12)
+        at model.$set (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/document.js:1460:22)
+        at model.set [as final_goal] (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/helpers/document/compile.js:205:19)
+        at file:///home/harsh/RAG/Agent-with-ui/Agent-be/dist/server.js:87:34
+        at Generator.next (<anonymous>)
+        at file:///home/harsh/RAG/Agent-with-ui/Agent-be/dist/server.js:7:71
+        at new Promise (<anonymous>)
+        at __awaiter (file:///home/harsh/RAG/Agent-with-ui/Agent-be/dist/server.js:3:12)
+        at saveStateToStateWithUser (file:///home/harsh/RAG/Agent-with-ui/Agent-be/dist/server.js:84:12) {
+      stringValue: '"{\n' +
+        "  final_goal: 'Determine if Samay Raina and Harkirat Singh are friends based on available information.'\n" +
+        '}"',
+      messageFormat: undefined,
+      kind: 'string',
+      value: {
+        final_goal: 'Determine if Samay Raina and Harkirat Singh are friends based on available information.'
+      },
+      path: 'final_goal',
+      reason: null,
+      valueType: 'Object'
+    },
+    current_goal: CastError: Cast to string failed for value "{
+      current_goal: 'Gather information to determine if Samay Raina and Harkirat Singh are friends.'
+    }" (type Object) at path "current_goal"
+        at SchemaString.cast (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/schema/string.js:609:11)
+        at SchemaType.applySetters (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/schemaType.js:1280:12)
+        at model.$set (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/document.js:1460:22)
+        at model.set [as current_goal] (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/helpers/document/compile.js:205:19)
+        at file:///home/harsh/RAG/Agent-with-ui/Agent-be/dist/server.js:88:36
+        at Generator.next (<anonymous>)
+        at file:///home/harsh/RAG/Agent-with-ui/Agent-be/dist/server.js:7:71
+        at new Promise (<anonymous>)
+        at __awaiter (file:///home/harsh/RAG/Agent-with-ui/Agent-be/dist/server.js:3:12)
+        at saveStateToStateWithUser (file:///home/harsh/RAG/Agent-with-ui/Agent-be/dist/server.js:84:12) {
+      stringValue: '"{\n' +
+        "  current_goal: 'Gather information to determine if Samay Raina and Harkirat Singh are friends.'\n" +
+        '}"',
+      messageFormat: undefined,
+      kind: 'string',
+      value: {
+        current_goal: 'Gather information to determine if Samay Raina and Harkirat Singh are friends.'
+      },
+      path: 'current_goal',
+      reason: null,
+      valueType: 'Object'
+    },
+    'current_function_to_execuete.inputs.sentences': CastError: Cast to string failed for value "[
+      'Are Samay Raina and Harkirat Singh friends?',
+      'relationship between Samay Raina and Harkirat Singh'
+    ]" (type Array) at path "current_function_to_execuete.inputs.$*"
+        at SchemaString.cast (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/schema/string.js:609:11)
+        at SchemaType.applySetters (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/schemaType.js:1280:12)
+        at MongooseMap.set (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/types/map.js:172:36)
+        at MongooseMap.$__runDeferred (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/types/map.js:333:12)
+        at new MongooseMap (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/types/map.js:45:10)
+        at SchemaMap.cast (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/schema/map.js:95:12)
+        at SchemaType.applySetters (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/schemaType.js:1280:12)
+        at model.$set (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/document.js:1460:22)
+        at model.$set (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/document.js:1249:14)
+        at model.set [as current_function_to_execuete] (/home/harsh/RAG/Agent-with-ui/Agent-be/node_modules/mongoose/lib/helpers/document/compile.js:189:13) {
+      stringValue: '"[\n' +
+        "  'Are Samay Raina and Harkirat Singh friends?',\n" +
+        "  'relationship between Samay Raina and Harkirat Singh'\n" +
+        ']"',
+      messageFormat: undefined,
+      kind: 'string',
+      value: [
+        'Are Samay Raina and Harkirat Singh friends?',
+        'relationship between Samay Raina and Harkirat Singh'
+      ],
+      path: 'current_function_to_execuete.inputs.$*',
+      reason: null,
+      valueType: 'Array'
+    }
+  },
+  _message: 'workingMemory validation failed'
+}
+
+Node.js v22.16.0
