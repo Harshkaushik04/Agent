@@ -89,3 +89,9 @@ remaining:
 12 jan 2026:
 currently integrating website frontend websockets and other stuff, testing prompts 
 next issue to resolve: working memory schema for node backend to python backend is bit different so encountering 422 error, so fix "updateState" function from server.ts
+
+13 jan 2026:
+fixed "generate-working-memory" route input output 
+next to do: 1.integrate the feedback and actual prompt given by user
+2. **major work**:also save all the incoming messages to and from server which has to be permanently shown to user even if it wouldnt be part of usual chat_history and working memory
+3. start working on next "/reasoning"
