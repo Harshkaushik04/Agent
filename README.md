@@ -95,3 +95,9 @@ fixed "generate-working-memory" route input output
 next to do: 1.integrate the feedback and actual prompt given by user
 2. **major work**:also save all the incoming messages to and from server which has to be permanently shown to user even if it wouldnt be part of usual chat_history and working memory
 3. start working on next "/reasoning"
+
+14 jan 2026:
+added feature to save all incoming message to and from server in completeHistoryModel 
+next to do: -integrate historyChat and extraContent into 1 variable because both give same content
+but look much different and fix some bugs too
+-other stuff written in "next to do" from yesterday
