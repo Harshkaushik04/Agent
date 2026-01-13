@@ -14,7 +14,7 @@ function Chat() {
     const Navigate:NavigateFunction=ctx.Navigate
     const setHistoryTitles:React.Dispatch<React.SetStateAction<string[]>>=ctx.setHistoryTitles
     const historyTitles:string[]=ctx.historyTitles
-    const historyChat:CustomTypes.messageType[]=ctx.historyChat
+    const historyChat:CustomTypes.completeMessageType[]=ctx.historyChat
     async function loadHistoryTitles(model:string="DeepSeek-R1-Distill-Qwen-7B-Q4_K_M"){
         const res=await axios.post<CustomTypes.loadHistoryTitlesType>("http://localhost:3000/load-history-titles",{
           model:model
@@ -327,14 +327,6 @@ function ChatRenderer({ messages}:CustomTypes.chatMessagesType) {
       <div style={{ fontFamily: "monospace", padding: "10px" }}>
           {messages?.map((msg, index) => (
               <div key={index} style={{ marginBottom: "12px" }}>
-
-                  {/* USER */}
-                  {msg.role == "user" && (
-                      <div style={{ color: "white" }}>
-                          <strong>USER:</strong> {msg.content}
-                      </div>
-                  )}
-
                   {/* MODEL */}
                   {msg.role =="model" && (
                       <>  
@@ -349,15 +341,14 @@ function ChatRenderer({ messages}:CustomTypes.chatMessagesType) {
                           </div>
                       </>
                   )}
-                  {/* SYSTEM */}
-                  {msg.role =="system" && (
+                  {/* USER / SYSTEM / MODEL REASONING AND OTHER STUFF */}
+                  {(msg.role!="model") && (
                       <>  
                           <span style={{ color: "white" }}>
-                          <strong>SYSTEM:</strong> {msg.content}
+                          <strong>{msg.role}:</strong> {msg.content}
                         </span>
                       </>
                   )}
-
               </div>
           ))}
           {extraContent?.map((msg,index)=>(
@@ -410,14 +401,15 @@ function SearchBar({
   }, [value]);
   async function sendMessage(){
         setWhetherMessageSent(true);
-        const userMessage:CustomTypes.messageType={
+        const userMessage:CustomTypes.completeMessageType={
             role:"user",
             content:value,
             before_think:"",
             after_think:"",
+            messageType:"normal",
             timestamp:new Date(Date.now())
           }
-        setHistoryChat((prev:CustomTypes.messageType[])=>{
+        setHistoryChat((prev:CustomTypes.completeMessageType[])=>{
           return [...prev,userMessage]
         });
         setValue("");

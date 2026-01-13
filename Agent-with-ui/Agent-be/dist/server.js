@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { connectDB, HistoryModel, UserModel, WorkingMemoryModel } from "./db.js";
+import { connectDB, HistoryModel, UserModel, CompleteHistoryModel, WorkingMemoryModel } from "./db.js";
 import express from "express";
 import cors from "cors";
 import jwt from "jsonwebtoken";
@@ -49,6 +49,59 @@ function requestApprovalStateAndUpdation(ws, username, state, stateUpdationObjec
         return new Promise((resolve) => {
             pendingApprovals.set(username, resolve);
         });
+    });
+}
+function updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprovalStateAndUpdation(ws, username, state, stateUpdationObject, userCompleteHistory, role) {
+    return __awaiter(this, void 0, void 0, function* () {
+        //==========================================
+        userCompleteHistory.messages.push({
+            role: role,
+            content: JSON.stringify(stateUpdationObject),
+            messageType: "approvalPending",
+            timestamp: new Date()
+        });
+        yield userCompleteHistory.save();
+        //==========================================
+        yield requestApprovalStateAndUpdation(ws, username, state, stateUpdationObject);
+        //==========================================
+        if (approved) {
+            let temp_len = userCompleteHistory.messages.length;
+            userCompleteHistory.messages[temp_len - 1].messageType = "approvalYes";
+            yield userCompleteHistory.save();
+        }
+        else {
+            let temp_len = userCompleteHistory.messages.length;
+            userCompleteHistory.messages[temp_len - 1].messageType = "approvalNo";
+            yield userCompleteHistory.save();
+        }
+        //==========================================
+    });
+}
+function updateCompleteHistoryWithStateUpdationObjectAndLogAndRequestApprovalStateAndUpdation(ws, username, state, stateUpdationObject, log, userCompleteHistory, role) {
+    return __awaiter(this, void 0, void 0, function* () {
+        //==========================================
+        let content = JSON.stringify(stateUpdationObject) + "\n" + "log: " + log;
+        userCompleteHistory.messages.push({
+            role: role,
+            content: content,
+            messageType: "approvalPending",
+            timestamp: new Date()
+        });
+        yield userCompleteHistory.save();
+        //==========================================
+        yield requestApprovalStateAndUpdation(ws, username, state, stateUpdationObject);
+        //==========================================
+        if (approved) {
+            let temp_len = userCompleteHistory.messages.length;
+            userCompleteHistory.messages[temp_len - 1].messageType = "approvalYes";
+            yield userCompleteHistory.save();
+        }
+        else {
+            let temp_len = userCompleteHistory.messages.length;
+            userCompleteHistory.messages[temp_len - 1].messageType = "approvalNo";
+            yield userCompleteHistory.save();
+        }
+        //==========================================
     });
 }
 function requestApprovalState(ws, username, state) {
@@ -340,6 +393,11 @@ app.post("/load-new-chat", (req, res) => __awaiter(void 0, void 0, void 0, funct
         model: model,
         title: `title${num_chats + 1}`
     });
+    yield CompleteHistoryModel.create({
+        username: username,
+        model: model,
+        title: `title${num_chats}`
+    });
     yield WorkingMemoryModel.create({
         username: username,
         model: model,
@@ -375,7 +433,7 @@ app.get("/update-chat", (req, res) => __awaiter(void 0, void 0, void 0, function
     let username = req.decrypted_username;
     let model = String(req.headers.model);
     let chat_number = Number(req.headers.chat_number);
-    let user = yield HistoryModel.findOne({
+    let user = yield CompleteHistoryModel.findOne({
         username: username,
         model: model,
         title: `title${chat_number}`
@@ -395,7 +453,7 @@ app.get("/click-history", (req, res) => __awaiter(void 0, void 0, void 0, functi
     let model = String(req.headers.model);
     let chat_number = Number(req.headers.chat_number);
     console.log(`[click-history]username:${username} model:${model} title:title${chat_number}`);
-    let user = yield HistoryModel.findOne({
+    let user = yield CompleteHistoryModel.findOne({
         username: username,
         model: model,
         title: `title${chat_number}`
@@ -415,6 +473,11 @@ app.delete("/delete-chat", (req, res) => __awaiter(void 0, void 0, void 0, funct
     let model = String(req.headers.model);
     let chat_number = Number(req.headers.chat_number);
     yield HistoryModel.deleteOne({
+        username: username,
+        model: model,
+        title: `title${chat_number}`
+    });
+    yield CompleteHistoryModel.deleteOne({
         username: username,
         model: model,
         title: `title${chat_number}`
@@ -488,6 +551,57 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
         });
         saveStateToStateWithUser(state, stateWithUser);
     }
+    let userCompleteHistory = yield CompleteHistoryModel.findOne({
+        username: username,
+        model: model,
+        title: `title${chat_number}`
+    });
+    if (!userCompleteHistory) {
+        yield CompleteHistoryModel.create({
+            username: username,
+            model: model,
+            title: `title${chat_number}`,
+            messages: [{
+                    role: "user",
+                    content: user_message,
+                    messageType: "normal",
+                    timestamp: new Date()
+                }]
+        });
+        userCompleteHistory = yield CompleteHistoryModel.findOne({
+            username: username,
+            model: model,
+            title: `title${chat_number}`
+        });
+        if (!userCompleteHistory) {
+            throw new Error("entry just made, so this error is technically not possible");
+        }
+    }
+    else {
+        userCompleteHistory.messages.push({
+            role: "user",
+            content: user_message,
+            messageType: "normal",
+            timestamp: new Date()
+        });
+        yield userCompleteHistory.save();
+    }
+    const userHistory = yield HistoryModel.findOne({
+        username: username,
+        model: model,
+        title: `title${chat_number}`
+    });
+    if (!userHistory) {
+        throw new Error("why is userHistory not defined");
+    }
+    userHistory.messages.push({
+        role: "user",
+        content: user_message,
+        before_think: "",
+        after_think: "",
+        timestamp: new Date()
+    });
+    yield userHistory.save();
     const foundWs = usernameToWebSocket.get(username);
     if (!foundWs) {
         throw new Error("[server.ts] websocket not connected till now!! => connect message not received?");
@@ -510,7 +624,7 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
             chat_number: chat_number
         });
         stateUpdateObj = resp.data.stateUpdationObject;
-        yield requestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj);
+        yield updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj, userCompleteHistory, "generate-working-memory");
     }
     console.log(`stateUpdateObj:`, stateUpdateObj);
     console.log(`old state:`, state);
@@ -529,7 +643,7 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
                 chat_number: chat_number
             });
             stateUpdateObj = resp1.data.stateUpdationObject;
-            yield requestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj);
+            yield updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj, userCompleteHistory, "reasoning");
         }
         state = updateState(state, stateUpdateObj);
         console.log(`state updated to:`, state);
@@ -545,7 +659,7 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
             });
             log = resp2.data.log;
             stateUpdateObj = resp2.data.stateUpdationObject;
-            yield requestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj);
+            yield updateCompleteHistoryWithStateUpdationObjectAndLogAndRequestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj, log, userCompleteHistory, "make-log");
         }
         state = updateState(state, stateUpdateObj);
         console.log(`state updated to:`, state);
@@ -561,7 +675,7 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
                 chat_number: chat_number
             });
             stateUpdateObj = resp3.data.stateUpdationObject;
-            yield requestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj);
+            yield updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj, userCompleteHistory, "make-log");
         }
         state = updateState(state, stateUpdateObj);
         console.log(`state updated to:`, state);
@@ -576,7 +690,7 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
                 chat_number: chat_number
             });
             stateUpdateObj = resp4.data.stateUpdationObject;
-            yield requestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj);
+            yield updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj, userCompleteHistory, "update-working-memory");
         }
         state = updateState(state, stateUpdateObj);
         console.log(`state updated to:`, state);

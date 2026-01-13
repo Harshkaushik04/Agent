@@ -5,11 +5,20 @@ export type numString=number|string
 
 //Database-data types
 export type messageType={
-        role:String,
-        content:String,
-        before_think:String,
-        after_think:String,
-        timestamp:Date
+    role:String,
+    content:String,
+    before_think:String,
+    after_think:String,
+    timestamp:Date
+}
+
+export type completeMessageType={
+    role:String,
+    content:String,
+    before_think:String,
+    after_think:String,
+    messageType:String,
+    timestamp:Date
 }
 
 // Server response types
@@ -32,7 +41,12 @@ export type i_clickHistoryType={
     valid:true,
     value_json:messageType[]
 }
-export type i_updateChatType=i_clickHistoryType
+export type i_updateChatType_old=i_clickHistoryType
+
+export type i_updateChatType={
+    valid:true,
+    value_json:completeMessageType[]
+}
 
 export type i_sendMessageType={
     valid:true
@@ -52,7 +66,8 @@ export type loadHistoryTitlesType=i_loadHistoryTitlesType|invalidResponseType
 export type loadNewChatType=i_loadNewChatType|invalidResponseType
 export type deleteChatType=loadNewChatType
 export type clickHistoryType=i_clickHistoryType|invalidResponseType
-export type updateChatType=clickHistoryType
+export type updateChatType_old=clickHistoryType
+export type updateChatType=i_updateChatType|invalidResponseType
 export type sendMessageType=i_sendMessageType|invalidResponseType
 export type loginType=i_loginType|invalidResponseType
 export type signUpType=i_signUpType
@@ -132,6 +147,34 @@ export type historySchemaType={
         timestamp:Date
     }]
 }
+
+export type completeHistorySchemaType={
+    username:string,
+    model:string,
+    title:string,
+    messages:[{
+        role:string,
+        content:string,
+        messageType:string,
+        timestamp:Date
+    }]
+}
+/*
+message types:
+"normal"
+"approvalPending"
+"approvalYes"
+"approvalNo"
+
+role types:
+"user"
+"model"
+"generate-working-memory"
+"reasoning"
+"execuete"
+"make-log"
+"update-working-memory"
+ */
 
 export type userSchemaType={
     username:string,

@@ -29,6 +29,17 @@ const history = new mongoose.Schema({
             timestamp: { type: Date, default: Date.now }
         }]
 });
+const completeHistory = new mongoose.Schema({
+    username: String,
+    model: String,
+    title: String,
+    messages: [{
+            role: String,
+            content: String,
+            messageType: String,
+            timeStamp: { type: Date, default: Date.now }
+        }]
+});
 const users = new mongoose.Schema({
     username: String,
     password: String
@@ -121,6 +132,7 @@ episodicMemory.index({ username: 1 }, { unique: true });
 workingMemory.index({ username: 1, title: 1, model: 1 }, { unique: true });
 episodicMemoryDescriptions.index({ username: 1 }, { unique: true });
 export const HistoryModel = mongoose.model("history", history);
+export const CompleteHistoryModel = mongoose.model("completeHistory", completeHistory);
 export const UserModel = mongoose.model("users", users);
 export const EpisodicMemoryModel = mongoose.model("episodicMemory", episodicMemory);
 export const WorkingMemoryModel = mongoose.model("workingMemory", workingMemory);

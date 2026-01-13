@@ -1,4 +1,4 @@
-import { connectDB, HistoryModel, UserModel,EpisodicMemoryModel,WorkingMemoryModel,EpisodicMemoryDescriptionsModel } from "./db.js"
+import { connectDB, HistoryModel, UserModel,EpisodicMemoryModel,CompleteHistoryModel,WorkingMemoryModel,EpisodicMemoryDescriptionsModel } from "./db.js"
 import { Request, Response, NextFunction } from 'express';
 import express from "express";
 import cors from "cors";
@@ -48,6 +48,67 @@ async function requestApprovalStateAndUpdation(ws: WebSocket, username: string, 
         pendingApprovals.set(username, resolve);
     });
 }
+
+async function updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprovalStateAndUpdation(ws:WebSocket,
+    username:string,state:CustomTypes.workingMemorySchemaType,
+    stateUpdationObject:CustomTypes.stateUpdationType[],
+    userCompleteHistory:HydratedDocument<CustomTypes.completeHistorySchemaType>,role:string
+){
+    //==========================================
+    userCompleteHistory.messages.push({
+        role:role,
+        content:JSON.stringify(stateUpdationObject),
+        messageType:"approvalPending",
+        timestamp:new Date()
+    })
+    await userCompleteHistory.save()
+    //==========================================
+    await requestApprovalStateAndUpdation(ws,username,state,stateUpdationObject)
+    //==========================================
+    if(approved){
+        let temp_len:number=userCompleteHistory.messages.length
+        userCompleteHistory.messages[temp_len-1].messageType="approvalYes"
+        await userCompleteHistory.save()
+    }
+    else{
+        let temp_len:number=userCompleteHistory.messages.length
+        userCompleteHistory.messages[temp_len-1].messageType="approvalNo"
+        await userCompleteHistory.save()
+    }
+    //==========================================
+}
+
+
+async function updateCompleteHistoryWithStateUpdationObjectAndLogAndRequestApprovalStateAndUpdation(ws:WebSocket,
+    username:string,state:CustomTypes.workingMemorySchemaType,
+    stateUpdationObject:CustomTypes.stateUpdationType[],log:string,
+    userCompleteHistory:HydratedDocument<CustomTypes.completeHistorySchemaType>,role:string
+){
+    //==========================================
+    let content=JSON.stringify(stateUpdationObject)+"\n"+"log: "+log
+    userCompleteHistory.messages.push({
+        role:role,
+        content:content,
+        messageType:"approvalPending",
+        timestamp:new Date()
+    })
+    await userCompleteHistory.save()
+    //==========================================
+    await requestApprovalStateAndUpdation(ws,username,state,stateUpdationObject)
+    //==========================================
+    if(approved){
+        let temp_len:number=userCompleteHistory.messages.length
+        userCompleteHistory.messages[temp_len-1].messageType="approvalYes"
+        await userCompleteHistory.save()
+    }
+    else{
+        let temp_len:number=userCompleteHistory.messages.length
+        userCompleteHistory.messages[temp_len-1].messageType="approvalNo"
+        await userCompleteHistory.save()
+    }
+    //==========================================
+}
+
 
 async function requestApprovalState(ws: WebSocket, username: string, state:CustomTypes.workingMemorySchemaType): Promise<boolean> {
     // const state_string=JSON.stringify(state)
@@ -348,6 +409,11 @@ app.post("/load-new-chat",async (req:Request,res:Response)=>{
         model:model,
         title:`title${num_chats+1}`
     })
+    await CompleteHistoryModel.create({
+        username:username,
+        model:model,
+        title:`title${num_chats}`
+    })
     await WorkingMemoryModel.create({
         username:username,
         model:model,
@@ -384,7 +450,7 @@ app.get("/update-chat",async (req:Request,res:Response)=>{
     let username:string=req.decrypted_username;
     let model:string=String(req.headers.model);
     let chat_number:number=Number(req.headers.chat_number);
-    let user=await HistoryModel.findOne({
+    let user=await CompleteHistoryModel.findOne({
         username:username,
         model:model,
         title:`title${chat_number}`
@@ -405,7 +471,7 @@ app.get("/click-history",async (req:Request,res:Response)=>{
     let model:string=String(req.headers.model);
     let chat_number:number=Number(req.headers.chat_number);
     console.log(`[click-history]username:${username} model:${model} title:title${chat_number}`)
-    let user=await HistoryModel.findOne({
+    let user=await CompleteHistoryModel.findOne({
         username:username,
         model:model,
         title:`title${chat_number}`
@@ -426,6 +492,11 @@ app.delete("/delete-chat",async (req:Request,res:Response)=>{
     let model:string=String(req.headers.model);
     let chat_number:number=Number(req.headers.chat_number);
     await HistoryModel.deleteOne({
+        username:username,
+        model:model,
+        title:`title${chat_number}`
+    })
+    await CompleteHistoryModel.deleteOne({
         username:username,
         model:model,
         title:`title${chat_number}`
@@ -500,6 +571,57 @@ app.post("/send-message",async (req:Request,res:Response)=>{
         })
         saveStateToStateWithUser(state,stateWithUser)
     }
+    let userCompleteHistory=await CompleteHistoryModel.findOne({
+        username:username,
+        model:model,
+        title:`title${chat_number}`
+    })
+    if(!userCompleteHistory){
+        await CompleteHistoryModel.create({
+            username:username,
+            model:model,
+            title:`title${chat_number}`,
+            messages:[{
+                role:"user",
+                content:user_message,
+                messageType:"normal",
+                timestamp:new Date()
+            }]
+        })
+        userCompleteHistory=await CompleteHistoryModel.findOne({
+            username:username,
+            model:model,
+            title:`title${chat_number}`
+        })
+        if(!userCompleteHistory){
+            throw new Error("entry just made, so this error is technically not possible")
+        }
+    }
+    else{
+        userCompleteHistory.messages.push({
+            role:"user",
+            content:user_message,
+            messageType:"normal",
+            timestamp:new Date()
+        })
+        await userCompleteHistory.save()
+    }
+    const userHistory=await HistoryModel.findOne({
+        username:username,
+        model:model,
+        title:`title${chat_number}`
+    })
+    if(!userHistory){
+        throw new Error("why is userHistory not defined")
+    }
+    userHistory.messages.push({
+        role:"user",
+        content:user_message,
+        before_think:"",
+        after_think:"",
+        timestamp:new Date()
+    })
+    await userHistory.save()
     const foundWs:WebSocket|undefined=usernameToWebSocket.get(username)
     if(!foundWs){
         throw new Error("[server.ts] websocket not connected till now!! => connect message not received?")
@@ -522,7 +644,8 @@ app.post("/send-message",async (req:Request,res:Response)=>{
             chat_number:chat_number
         })
         stateUpdateObj=resp.data.stateUpdationObject
-        await requestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj)
+        await updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj,
+            userCompleteHistory,"generate-working-memory")
     }
     console.log(`stateUpdateObj:`,stateUpdateObj)
     console.log(`old state:`,state)
@@ -541,7 +664,8 @@ app.post("/send-message",async (req:Request,res:Response)=>{
                 chat_number:chat_number
             })
             stateUpdateObj=resp1.data.stateUpdationObject
-            await requestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj)
+            await updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj,
+            userCompleteHistory,"reasoning")
         }
         state=updateState(state,stateUpdateObj)
         console.log(`state updated to:`,state)
@@ -557,7 +681,8 @@ app.post("/send-message",async (req:Request,res:Response)=>{
             })
             log=resp2.data.log
             stateUpdateObj=resp2.data.stateUpdationObject
-            await requestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj)
+            await updateCompleteHistoryWithStateUpdationObjectAndLogAndRequestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj,
+            log,userCompleteHistory,"make-log")
         }
         state=updateState(state,stateUpdateObj)
         console.log(`state updated to:`,state)
@@ -573,7 +698,8 @@ app.post("/send-message",async (req:Request,res:Response)=>{
                 chat_number:chat_number
             })
             stateUpdateObj=resp3.data.stateUpdationObject
-            await requestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj)
+            await updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj,
+            userCompleteHistory,"make-log")
         }
         state=updateState(state,stateUpdateObj)
         console.log(`state updated to:`,state)
@@ -588,7 +714,8 @@ app.post("/send-message",async (req:Request,res:Response)=>{
                 chat_number:chat_number
             })
             stateUpdateObj=resp4.data.stateUpdationObject
-            await requestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj)
+            await updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj,
+            userCompleteHistory,"update-working-memory")
         }
         state=updateState(state,stateUpdateObj)
         console.log(`state updated to:`,state)
