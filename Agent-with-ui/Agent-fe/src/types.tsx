@@ -5,12 +5,21 @@ export type numString=number|string
 
 //Database-data types
 export type messageType={
-        role:String,
-        content:String,
-        before_think:String,
-        after_think:String,
-        timestamp:Date
+    role:String,
+    content:String,
+    before_think:String,
+    after_think:String,
+    timestamp:Date
 }
+export type completeMessageType={
+    role:String,
+    content:String,
+    before_think:String,
+    after_think:String,
+    messageType:String,
+    timestamp:Date
+}
+
 export type ApprovalMessageType={
   content:string,
   isDone:boolean,
@@ -30,7 +39,7 @@ export interface mainBarType{
   height1:numString,
   width2:numString,
   height2:numString,
-  content:messageType[]
+  content:completeMessageType[]
 }
 
 export interface sideBarType{
@@ -44,7 +53,7 @@ export interface boxType{
   color:string
 }
 export interface chatMessagesType{
-  messages:messageType[],
+  messages:completeMessageType[],
   extraContent:ApprovalMessageType[]
 }
 
@@ -63,8 +72,8 @@ export interface props{
 export interface chatContextType{
     historyTitles: string[],
     setHistoryTitles: React.Dispatch<React.SetStateAction<string[]>>, 
-    historyChat: messageType[],
-    setHistoryChat: React.Dispatch<React.SetStateAction<messageType[]>>,
+    historyChat: completeMessageType[],
+    setHistoryChat: React.Dispatch<React.SetStateAction<completeMessageType[]>>,
     extraContent:ApprovalMessageType[],
     setExtraContent:React.Dispatch<React.SetStateAction<ApprovalMessageType[]>>,
     Navigate: NavigateFunction
@@ -116,10 +125,14 @@ export type i_deleteChatType=i_loadNewChatType
 
 export type i_clickHistoryType={
     valid:true,
-    value_json:messageType[]
+    value_json:completeMessageType[]
 }
-export type i_updateChatType=i_clickHistoryType
+export type i_updateChatType_old=i_clickHistoryType
 
+export type i_updateChatType={
+    valid:true,
+    value_json:completeMessageType[]
+}
 export type i_sendMessageType={
     valid:true
 }
@@ -138,7 +151,8 @@ export type loadHistoryTitlesType=i_loadHistoryTitlesType|invalidResponseType
 export type loadNewChatType=i_loadNewChatType|invalidResponseType
 export type deleteChatType=loadNewChatType
 export type clickHistoryType=i_clickHistoryType|invalidResponseType
-export type updateChatType=clickHistoryType
+export type updateChatType_old=clickHistoryType
+export type updateChatType=i_updateChatType|invalidResponseType
 export type sendMessageType=i_sendMessageType|invalidResponseType
 export type loginType=i_loginType
 export type signUpType=i_signUpType

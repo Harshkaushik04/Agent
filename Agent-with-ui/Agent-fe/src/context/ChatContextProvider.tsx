@@ -6,7 +6,7 @@ export let ChatContext=createContext<CustomTypes.chatContextType|null>(null)
 
 export function ChatContextProvider({children}:CustomTypes.props){
     const [historyTitles,setHistoryTitles]=useState<string[]>([]);
-    const [historyChat,setHistoryChat]=useState<CustomTypes.messageType[]>([])
+    const [historyChat,setHistoryChat]=useState<CustomTypes.completeMessageType[]>([])
     const [extraContent,setExtraContent]=useState<CustomTypes.ApprovalMessageType[]>([])
     const Navigate=useNavigate();
     return(
