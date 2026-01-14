@@ -31,7 +31,7 @@ let app = express();
 const JWT_SECRET = "randomnum1";
 const PORT = 3000;
 let pendingApprovals = new Map;
-function requestApprovalStateAndUpdation(ws, username, state, stateUpdationObject) {
+function requestApprovalStateAndUpdation(ws, username, state, stateUpdationObject, role) {
     return __awaiter(this, void 0, void 0, function* () {
         // const state_string=JSON.stringify(state)
         // const state_updation_string=JSON.stringify(stateUpdationObject)
@@ -40,7 +40,8 @@ function requestApprovalStateAndUpdation(ws, username, state, stateUpdationObjec
             ws.send(JSON.stringify({
                 eventType: "approval",
                 state: state,
-                stateUpdationObject: stateUpdationObject
+                stateUpdationObject: stateUpdationObject,
+                role: role
             }));
         }
         catch (e) {
@@ -62,7 +63,7 @@ function updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprovalState
         });
         yield userCompleteHistory.save();
         //==========================================
-        yield requestApprovalStateAndUpdation(ws, username, state, stateUpdationObject);
+        yield requestApprovalStateAndUpdation(ws, username, state, stateUpdationObject, role);
         //==========================================
         if (approved) {
             let temp_len = userCompleteHistory.messages.length;
@@ -89,7 +90,7 @@ function updateCompleteHistoryWithStateUpdationObjectAndLogAndRequestApprovalSta
         });
         yield userCompleteHistory.save();
         //==========================================
-        yield requestApprovalStateAndUpdation(ws, username, state, stateUpdationObject);
+        yield requestApprovalStateAndUpdation(ws, username, state, stateUpdationObject, role);
         //==========================================
         if (approved) {
             let temp_len = userCompleteHistory.messages.length;
@@ -251,9 +252,10 @@ wss.on("connection", function (ws) {
     });
 });
 app.use(express.json());
-app.use(cors({
-    "origin": "http://localhost:5173"
-}));
+// app.use(cors({
+//     "origin":"http://localhost:5173"
+// }));
+app.use(cors());
 function authMiddleware(req, res, next) {
     // const custom_req=req as CustomTypes.afterLoginRequest
     // const custom_res=res as Response<CustomTypes.anyResponseType>
@@ -396,7 +398,7 @@ app.post("/load-new-chat", (req, res) => __awaiter(void 0, void 0, void 0, funct
     yield CompleteHistoryModel.create({
         username: username,
         model: model,
-        title: `title${num_chats}`
+        title: `title${num_chats + 1}`
     });
     yield WorkingMemoryModel.create({
         username: username,

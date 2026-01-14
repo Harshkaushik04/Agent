@@ -11,7 +11,7 @@ export type messageType={
     after_think:String,
     timestamp:Date
 }
-export type completeMessageType={
+export type  completeMessageType={
     role:String,
     content:String,
     before_think:String,
@@ -53,8 +53,7 @@ export interface boxType{
   color:string
 }
 export interface chatMessagesType{
-  messages:completeMessageType[],
-  extraContent:ApprovalMessageType[]
+  messages:completeMessageType[]
 }
 
 export interface searchBarType{
@@ -162,13 +161,15 @@ export type wsToFrontend_approval={
     eventType:"approval",
     state:workingMemorySchemaType,
     stateUpdationObject?:stateUpdationType[],
-    message?:string
+    message?:string,
+    role:string
 }
 export type wsToFrontend_showOutput={
     eventType:"showOutput",
     state?:workingMemorySchemaType,
     stateUpdationObject?:stateUpdationType[],
-    message?:string
+    message?:string,
+    role:string
 }
 
 export type wsToFrontend=wsToFrontend_approval|wsToFrontend_showOutput
