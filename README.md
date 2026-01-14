@@ -101,3 +101,9 @@ added feature to save all incoming message to and from server in completeHistory
 next to do: -integrate historyChat and extraContent into 1 variable because both give same content
 but look much different and fix some bugs too
 -other stuff written in "next to do" from yesterday
+
+15 jan 2026:
+removed the buggy extraContent variable and integrated it into historyChat for consistency
+next to do:
+1. write prompts for next routes like reasoning,etc and also integrate feedback,etc
+2. learn next.js 
