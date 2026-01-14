@@ -29,7 +29,7 @@ const PORT=3000;
 
 let pendingApprovals=new Map<string,(choice:boolean)=>void>
 async function requestApprovalStateAndUpdation(ws: WebSocket, username: string, state:CustomTypes.workingMemorySchemaType,
-    stateUpdationObject:CustomTypes.stateUpdationType[]
+    stateUpdationObject:CustomTypes.stateUpdationType[],role:string
 ): Promise<boolean> {
     // const state_string=JSON.stringify(state)
     // const state_updation_string=JSON.stringify(stateUpdationObject)
@@ -38,7 +38,8 @@ async function requestApprovalStateAndUpdation(ws: WebSocket, username: string, 
         ws.send(JSON.stringify({
             eventType: "approval",
             state:state,
-            stateUpdationObject:stateUpdationObject
+            stateUpdationObject:stateUpdationObject,
+            role:role
         }));
     }
     catch(e){
@@ -63,7 +64,7 @@ async function updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprova
     })
     await userCompleteHistory.save()
     //==========================================
-    await requestApprovalStateAndUpdation(ws,username,state,stateUpdationObject)
+    await requestApprovalStateAndUpdation(ws,username,state,stateUpdationObject,role)
     //==========================================
     if(approved){
         let temp_len:number=userCompleteHistory.messages.length
@@ -94,7 +95,7 @@ async function updateCompleteHistoryWithStateUpdationObjectAndLogAndRequestAppro
     })
     await userCompleteHistory.save()
     //==========================================
-    await requestApprovalStateAndUpdation(ws,username,state,stateUpdationObject)
+    await requestApprovalStateAndUpdation(ws,username,state,stateUpdationObject,role)
     //==========================================
     if(approved){
         let temp_len:number=userCompleteHistory.messages.length
@@ -265,10 +266,11 @@ wss.on("connection",function(ws:WebSocket){
 })
 
 app.use(express.json());
-app.use(cors({
-    "origin":"http://localhost:5173"
-}));
+// app.use(cors({
+//     "origin":"http://localhost:5173"
+// }));
 
+app.use(cors())
 function authMiddleware(req:Request,res:Response,next:NextFunction){
     // const custom_req=req as CustomTypes.afterLoginRequest
     // const custom_res=res as Response<CustomTypes.anyResponseType>
@@ -412,7 +414,7 @@ app.post("/load-new-chat",async (req:Request,res:Response)=>{
     await CompleteHistoryModel.create({
         username:username,
         model:model,
-        title:`title${num_chats}`
+        title:`title${num_chats+1}`
     })
     await WorkingMemoryModel.create({
         username:username,

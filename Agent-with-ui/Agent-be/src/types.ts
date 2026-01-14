@@ -393,13 +393,15 @@ export type wsToFrontend_approval={
     eventType:"approval",
     state:workingMemorySchemaType,
     stateUpdationObject?:stateUpdationType[],
-    message?:string
+    message?:string,
+    role:string
 }
 export type wsToFrontend_showOutput={
     eventType:"showOutput",
     state?:workingMemorySchemaType,
     stateUpdationObject?:stateUpdationType[],
-    message?:string
+    message?:string,
+    role:string
 }
 
 export type wsToFrontend=wsToFrontend_approval|wsToFrontend_showOutput

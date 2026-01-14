@@ -65,7 +65,7 @@ function Chat() {
     }
     useEffect(()=>{
       loadHistoryTitles()
-      const setExtraContent:React.Dispatch<React.SetStateAction<CustomTypes.ApprovalMessageType[]>>=ctx.setExtraContent
+      const setHistoryChat:React.Dispatch<React.SetStateAction<CustomTypes.completeMessageType[]>>=ctx.setHistoryChat
       const local_token=localStorage.getItem("token")
       if(!local_token){
         throw new Error("[Chat.tsx]token not found")
@@ -79,18 +79,33 @@ function Chat() {
         if(parsedMessage.eventType=="approval"){
             const state:CustomTypes.workingMemorySchemaType=parsedMessage.state
             const stateUpdationObject=parsedMessage.stateUpdationObject
+            const message=parsedMessage.message
+            const role:string=parsedMessage.role
             let content=""
-            if(!stateUpdationObject){
-              content=JSON.stringify([state])  
+            let arr:(CustomTypes.workingMemorySchemaType|CustomTypes.stateUpdationType[]|string)[]=[state]
+            if(stateUpdationObject){
+              arr.push(stateUpdationObject)
             }
-            else{
-              content=JSON.stringify([state,stateUpdationObject])
+            if(message){
+              arr.push(message)
             }
-            setExtraContent((prev:CustomTypes.ApprovalMessageType[])=>{
+            content=JSON.stringify(arr)
+            /*
+             role: String;
+              content: String;
+              before_think: String;
+              after_think: String;
+              messageType: String;
+              timestamp: Date;
+             */
+            setHistoryChat((prev:CustomTypes.completeMessageType[])=>{
               return [...prev,{
+                role:role,
                 content:content,
-                isDone:false,
-                approved:false
+                before_think:"",
+                after_think:"",
+                messageType:"approvalPending",
+                timestamp:new Date()
               }]
             })
         }
@@ -123,7 +138,6 @@ function Chat() {
 
 function ScrollBoxWithContentAndSearchBar({ width1 = 300, height1 = "100vh", width2,height2,content}:CustomTypes.mainBarType) {
   const ctx=useChat()
-  const extraContent:CustomTypes.ApprovalMessageType[]=ctx.extraContent
   return (
     <div style={{
       // border: "1px solid #ccc"
@@ -140,7 +154,7 @@ function ScrollBoxWithContentAndSearchBar({ width1 = 300, height1 = "100vh", wid
         // overflowY: "scroll" 
       }}
     >
-      <ChatRenderer messages={content} extraContent={extraContent}/>
+      <ChatRenderer messages={content}/>
     </div>
     <div style={{
       display:"flex",
@@ -279,26 +293,27 @@ function ClickableBox({ title,color }:CustomTypes.boxType) {
   );
 }
 
-function ChatRenderer({ messages}:CustomTypes.chatMessagesType) {
+function ChatRenderer({messages}:CustomTypes.chatMessagesType) {
   const input_ref=useRef<HTMLInputElement|null>(null)
   const feedback_ref=useRef<HTMLInputElement|null>(null)
   const ctx=useChat()
-  const extraContent=ctx.extraContent
-  const setExtraContent=ctx.setExtraContent
+  const setHistoryChat:React.Dispatch<React.SetStateAction<CustomTypes.completeMessageType[]>>=ctx.setHistoryChat
   const socket=useWebSocket()
   async function sendMessage(){
-    setExtraContent((prev:CustomTypes.ApprovalMessageType[])=>{
+    setHistoryChat((prev:CustomTypes.completeMessageType[])=>{
       const allExceptLast = prev.slice(0, -1);
       const last=prev.at(-1)
       if(!last){
-        throw new Error("[Chat.tsx] extraContent array is empty")
+        throw new Error("[Chat.tsx] historyChat array is empty")
       }
-      last.isDone=true
       if(!input_ref.current){
         throw new Error("[Chat.tsx] input_ref.current is null")
       }
       if(input_ref.current.value=="yes"){
-        last.approved=true
+        last.messageType="approvalYes"
+      }
+      else{
+        last.messageType="approvalNo"
       }
       return [...allExceptLast,last]
     })
@@ -328,10 +343,10 @@ function ChatRenderer({ messages}:CustomTypes.chatMessagesType) {
           {messages?.map((msg, index) => (
               <div key={index} style={{ marginBottom: "12px" }}>
                   {/* MODEL */}
-                  {msg.role =="model" && (
+                  {msg.role =="model" && msg.messageType=="normal" && (
                       <>  
                         <span style={{ color: "white" }}>
-                          <strong>MODEL:</strong> 
+                          <strong>model:</strong> 
                         </span>
                           <div style={{ color: "#4CAF50" }}>  
                               {msg.before_think}
@@ -341,8 +356,33 @@ function ChatRenderer({ messages}:CustomTypes.chatMessagesType) {
                           </div>
                       </>
                   )}
-                  {/* USER / SYSTEM / MODEL REASONING AND OTHER STUFF */}
-                  {(msg.role!="model") && (
+                  {(msg.messageType=="approvalPending") && (
+                      <>  
+                          <span style={{ color: "white" }}>
+                          <strong>{msg.role}:</strong> {msg.content}
+                        </span>
+                        <><div><input ref={input_ref} placeholder="approve?"></input></div>
+                                <div><input ref={feedback_ref} placeholder="feedback?"></input></div>
+                                <div><button onClick={async ()=>{await sendMessage()}}>Send</button></div></>
+                      </>
+                  )}
+                  {(msg.messageType=="approvalYes") && (
+                      <>  
+                          <span style={{ color: "white" }}>
+                          <strong>{msg.role}:</strong> {msg.content}
+                        </span>
+                        <div style={{color:"orange"}}>APPROVED</div>
+                      </>
+                  )}
+                  {(msg.messageType=="approvalNo") && (
+                      <>  
+                          <span style={{ color: "white" }}>
+                          <strong>{msg.role}:</strong> {msg.content}
+                        </span>
+                        <div style={{color:"orange"}}>DISAPPROVED</div>
+                      </>
+                  )}
+                  {(msg.messageType=="normal" && (msg.role=="user"||msg.role=="system")) && (
                       <>  
                           <span style={{ color: "white" }}>
                           <strong>{msg.role}:</strong> {msg.content}
@@ -350,20 +390,6 @@ function ChatRenderer({ messages}:CustomTypes.chatMessagesType) {
                       </>
                   )}
               </div>
-          ))}
-          {extraContent?.map((msg,index)=>(
-            <div key={index}>
-              <div style={{color:"pink"}}>{msg.content}</div>
-              {!msg.isDone&&(<><div><input ref={input_ref} placeholder="approve?"></input></div>
-                                <div><input ref={feedback_ref} placeholder="feedback?"></input></div>
-                                <div><button onClick={async ()=>{await sendMessage()}}>Send</button></div></>)}
-              {msg.isDone&&
-              (<>
-              {msg.approved&&<div style={{color:"orange"}}>APPROVED</div>}
-              {!msg.approved&&<div style={{color:"orange"}}>DISAPPROVED</div>}
-              </>)
-              }
-            </div>
           ))}
       </div>
   );
