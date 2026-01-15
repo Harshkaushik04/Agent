@@ -1,4 +1,4 @@
-from typing import TypedDict, List, Dict,Optional
+from typing import TypedDict, List, Dict,Optional,Any
 from pydantic import BaseModel
 # 1. Define Sub-Types first for cleaner structure
 
@@ -11,7 +11,7 @@ class ActionLog(BaseModel):
     serial_number: int
     description: str
     function_name: str
-    inputs: Dict[str, str]   # Matches { [key:string]: string }
+    inputs: Dict[str, Any]   # Matches { [key:string]: string }
     outputs: Dict[str, str]
     log: str
     filter_words: List[str]
@@ -20,7 +20,7 @@ class PlanStep(BaseModel):
     serial_number: int
     description: str
     function_name: str
-    inputs: Dict[str, str]
+    inputs: Dict[str, Any]
     brief_expected_outputs: List[str]
     status: str
 
@@ -42,7 +42,7 @@ class EpisodicMemory(BaseModel):
 
 class CurrentFunctionToExecuete(BaseModel):
     function_name:str
-    inputs:Dict[str,str]
+    inputs:Dict[str,Any]
 
 class ThingsToNode(BaseModel):
     serial_number:int

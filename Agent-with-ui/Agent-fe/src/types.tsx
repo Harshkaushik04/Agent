@@ -5,18 +5,18 @@ export type numString=number|string
 
 //Database-data types
 export type messageType={
-    role:String,
-    content:String,
-    before_think:String,
-    after_think:String,
+    role:string,
+    content:string,
+    before_think:string,
+    after_think:string,
     timestamp:Date
 }
 export type  completeMessageType={
-    role:String,
-    content:String,
-    before_think:String,
-    after_think:String,
-    messageType:String,
+    role:string,
+    content:string,
+    before_think:string,
+    after_think:string,
+    messageType:string,
     timestamp:Date
 }
 
@@ -28,9 +28,9 @@ export type ApprovalMessageType={
 
 //frontend component types
 export interface userType{
-    username:String,
-    model:String,
-    title:String,
+    username:string,
+    model:string,
+    title:string,
     messages:messageType[]
 }
 
