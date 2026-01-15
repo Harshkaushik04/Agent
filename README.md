@@ -107,3 +107,9 @@ removed the buggy extraContent variable and integrated it into historyChat for c
 next to do:
 1. write prompts for next routes like reasoning,etc and also integrate feedback,etc
 2. learn next.js 
+
+completed:written prompts for reasoning, added safe gaurd to kill py server
+update to "/execuete" route: only output log and not stateUpdationObject(only run tool and not llm call)
+next to do: 1.make all the tools to be used in "/execuete"
+2. after making all tools, make prompt for "make-log" and then fully test the system
+3. make better ui for formatting chats
