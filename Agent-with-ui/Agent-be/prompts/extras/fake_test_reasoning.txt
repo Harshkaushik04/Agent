@@ -1,0 +1,18 @@
+just output the following, nothing less nothing more(exactly this) and no extra words(ALSO STRICTLY DO NOT PRINT EXTRA ```json or anything):
+========================================START OF EXACT OUTPUT==================================
+[
+  {
+    "type": "update",
+    "field": "current_function_to_execuete",
+    "serial_number": 0,
+    "updated": {
+      "function_name": "search_query_generation",
+      "inputs": {
+        "sentences": [
+          "Research and compare Python and C++ to determine which language is better overall, covering performance, usage, and syntax."
+        ]
+      }
+    }
+  }
+]
+=====================================END OF EXACT OUTPUT===========================================

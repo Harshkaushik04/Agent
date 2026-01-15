@@ -135,5 +135,11 @@ output should be like this:
         "sentences": ["difference between python and c++", "python vs c++ pros and cons"]
       }
     }
+  },
+  {
+    "type":"update",
+    "field":"final_goal_completed",
+    "serial_number":0,
+    "updated":"no"
   }
 ]

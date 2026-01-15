@@ -1,5 +1,5 @@
-just output the following, nothing less nothing more(exactly this) and no extra words(ALSO DONT PRINT EXTRA ```json or anything)
-
+just output the following, nothing less nothing more(exactly this) and no extra words(ALSO STRICTLY DO NOT PRINT EXTRA ```json or anything):
+===========================================START OF EXACT OUTPUT=====================================
 [
   {
     "type": "update",
@@ -123,3 +123,4 @@ just output the following, nothing less nothing more(exactly this) and no extra 
     "updated": "no"
   }
 ]
+=========================================END OF EXACT OUTPUT====================================

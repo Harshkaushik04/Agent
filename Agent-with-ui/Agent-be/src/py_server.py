@@ -2,12 +2,45 @@ import sys
 import gc
 import re
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException,Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional
 from py_types import *
 import json
+import signal
+import threading
+import time
 
+llm_lock = threading.Lock()
+shutting_down = False
+current_generation = False
+
+def handle_shutdown(sig, frame):
+    global shutting_down
+
+    if shutting_down:
+        return
+
+    print(f"\n[SYSTEM] Received signal {sig}, shutting down safely...")
+    shutting_down = True
+
+    # Wait for generation to finish (max 10s)
+    start = time.time()
+    while current_generation and time.time() - start < 10:
+        print("[SYSTEM] Waiting for generation to finish...")
+        time.sleep(0.5)
+
+    try:
+        clean_memory()
+    finally:
+        print("[SYSTEM] Exit.")
+        sys.exit(0)
+
+signal.signal(signal.SIGTERM, handle_shutdown)  # kill PID
+signal.signal(signal.SIGINT, handle_shutdown)   # Ctrl+C
+signal.signal(signal.SIGHUP, handle_shutdown)   # terminal close / SSH drop
 
 # Try importing torch for VRAM clearing, handle if not installed
 try:
@@ -21,6 +54,7 @@ from llama_cpp import Llama, GGML_TYPE_Q8_0
 # --- CONFIGURATION ---
 MODEL_PATH = "/home/harsh/RAG/models/DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf"
 N_CTX = 80000
+MAX_TOKENS=4196
 TEMPERATURE=0.6
 HOST = "0.0.0.0"
 PORT = 5000
@@ -46,6 +80,15 @@ def clean_memory():
         torch.cuda.empty_cache()
         
     print("✨ [SYSTEM] Memory/VRAM Forcefully Cleared.")
+
+def load_file(filepath):
+    """Helper to read file content safely"""
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        print(f"Error: File not found at {filepath}")
+        return ""
 
 # --- LIFECYCLE MANAGEMENT ---
 @asynccontextmanager
@@ -79,14 +122,31 @@ def load_model():
     )
     print("✅ Model loaded and ready!")
 
-def make_generate_working_memory_prompt():
-    prompt=""
-    with open("../prompts/extras/fake_test.txt") as f:
-        prompt=f.read()
+def make_generate_working_memory_prompt(state_json):
+    prompt_template=load_file("../prompts/generate_working_memory.txt")
+    tools=load_file("../prompts/essentials/tools.txt")
+    example_generate_working_memory=load_file("../prompts/essentials/example_generate_working_memory.txt")
+    prompt_template.replace("{{TOOLS}}",tools)
+    prompt_template.replace("{{EXAMPLE}}",example_generate_working_memory)
+    prompt_template.replace("{{STATE}}",state_json)
+    return prompt_template
+
+def fake_make_generate_working_memory_prompt(state_json):
+    prompt=load_file("../prompts/extras/fake_test_gwm_2.txt")
     return prompt
 
-def make_reasoning_prompt():
-    return ""
+def fake_make_reasoning_prompt(state_json):
+    prompt=load_file("../prompts/extras/fake_test_reasoning.txt")
+    return prompt
+
+def make_reasoning_prompt(state_json):
+    prompt_template=load_file("../prompts/reasoning.txt")
+    tools=load_file("../prompts/essentials/tools.txt")
+    example_reasoning=load_file("../prompts/essentials/example_reasoning.txt")
+    prompt_template.replace("{{TOOLS}}",tools)
+    prompt_template.replace("{{EXAMPLE}}",example_reasoning)
+    prompt_template.replace("{{STATE}}",state_json)
+    return prompt_template
 
 def make_execuete_prompt():
     return ""
@@ -124,6 +184,29 @@ def parse_deepseek_response(raw_text: str):
 
 # --- NEW ROUTES ---
 
+# --- ADD THIS HANDLER ---
+@app.exception_handler(RequestValidationError)
+async def debug_validation_exception_handler(request: Request, exc: RequestValidationError):
+    # 1. Get the raw body bytes
+    body = await request.body()
+    
+    # 2. Decode it to string (so you can read it)
+    body_str = body.decode("utf-8")
+    
+    # 3. Print it to your server console
+    print(f"\n--- 422 VALIDATION ERROR ---")
+    print(f"URL: {request.url}")
+    print(f"RAW BODY RECEIVED:\n{body_str}")
+    print(f"PYDANTIC ERRORS:\n{exc.errors()}")
+    print(f"----------------------------\n")
+
+    # 4. Return the standard 422 response so the frontend still knows it failed
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors(), "body_received": body_str},
+    )
+# ------------------------
+
 @app.post("/close-model")
 async def close_model_route():
     """Free up VRAM so you can load your embedding model."""
@@ -140,36 +223,46 @@ async def open_model_route():
 @app.post("/generate-working-memory")
 async def generate_working_memory(request:GenerateWorkingMemoryRequest):
     # print(f"[entered-generate_working_memory]")
-    global llm
+    global llm,current_generation,shutting_down
+    if shutting_down:
+        raise HTTPException(status_code=503,detail="py server shut down")
     
     # Safety Check
     if llm is None:
         return{
             "valid":False
         }
-    state=request.state
-    json_state=state.model_dump_json()
-    prompt = make_generate_working_memory_prompt()
-    
-    # print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")
+    with llm_lock:
+        current_generation=True
+        try:
+            state=request.state
+            json_state=state.model_dump_json()
+            prompt = fake_make_generate_working_memory_prompt(json_state)
+            
+            # print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")
 
-    # Stream to stdout for debugging
-    stream = llm(
-        prompt,
-        max_tokens=N_CTX,
-        temperature=TEMPERATURE,
-        stop=["<|im_end|>"],
-        stream=True
-    )
+            # Stream to stdout for debugging
+            stream = llm(
+                prompt,
+                max_tokens=MAX_TOKENS,
+                temperature=TEMPERATURE,
+                stop=["<|im_end|>"],
+                stream=True
+            )
 
-    full_text = ""
-    for output in stream:
-        token = output['choices'][0]['text']
-        sys.stdout.write(token)
-        sys.stdout.flush()
-        full_text += token
+            full_text = ""
+            for output in stream:
+                if shutting_down:
+                    print("[SYSTEM] Generation interrupted")
+                    break
+                token = output['choices'][0]['text']
+                sys.stdout.write(token)
+                sys.stdout.flush()
+                full_text += token
 
-    print("\n------------------------------------------------\n")
+            print("\n------------------------------------------------\n")
+        finally:
+            current_generation=False
     
     thought, answer = parse_deepseek_response(full_text)
     output_updation_state={}
@@ -192,15 +285,15 @@ async def reasoning(request:ReasoningRequest):
             "valid":False
         }
     state=request.state
-    json_state=json.dumps(state)
-    prompt = make_reasoning_prompt()
+    json_state=state.model_dump_json()
+    prompt = fake_make_reasoning_prompt(json_state)
     
     # print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")
 
     # Stream to stdout for debugging
     stream = llm(
         prompt,
-        max_tokens=N_CTX,
+        max_tokens=MAX_TOKENS,
         temperature=TEMPERATURE,
         stop=["<|im_end|>"],
         stream=True
@@ -228,6 +321,7 @@ async def reasoning(request:ReasoningRequest):
 
 @app.post("/execuete")
 async def execuete(request:ExecueteRequest):
+    #change this function to run tools instead of llm call and also only return log, instead of stateUpdationObject too
     global llm
     
     # Safety Check
@@ -236,7 +330,7 @@ async def execuete(request:ExecueteRequest):
             "valid":False
         }
     state=request.state
-    json_state=json.dumps(state)
+    json_state=state.model_dump_json()
     prompt = make_reasoning_prompt()
     
     # print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")
@@ -280,7 +374,7 @@ async def make_log(request:MakeLogRequest):
             "valid":False
         }
     state=request.state
-    json_state=json.dumps(state)
+    json_state=state.model_dump_json()
     prompt = make_log_prompt()
     
     # print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")
@@ -323,7 +417,7 @@ async def update_working_memory(request:UpdateWorkingMemoryRequest):
             "valid":False
         }
     state=request.state
-    json_state=json.dumps(state)
+    json_state=state.model_dump_json()
     prompt = make_update_working_memory_prompt()
     
     # print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")

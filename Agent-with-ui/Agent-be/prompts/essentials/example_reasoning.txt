@@ -1,0 +1,118 @@
+for initial working state:
+ {
+  "chat_history": [
+    {
+      "serial_number": 1,
+      "role": "user",
+      "content": "Research and compare Python and C++ to determine which language is better overall, covering performance, usage, and syntax."
+    }
+  ],
+  "previous_actions_and_logs": [],
+  "final_goal": "Research and compare Python and C++ to determine which language is better overall, covering performance, usage, and syntax.",
+  "current_goal": "Generate search queries to find general comparisons between Python and C++.",
+  "rough_plan_to_reach_goal": [
+    {
+      "serial_number": 1,
+      "description": "Generate search queries for general Python vs C++ comparison",
+      "function_name": "search_query_generation",
+      "inputs": {
+        "sentences": [
+          "Research and compare Python and C++ to determine which language is better overall, covering performance, usage, and syntax."
+        ]
+      },
+      "brief_expected_outputs": [
+        "search queries"
+      ],
+      "status": "ongoing"
+    },
+    {
+      "serial_number": 2,
+      "description": "Search Google for comparison articles",
+      "function_name": "search_engine_1",
+      "inputs": {
+        "list_search_query_top_k": []
+      },
+      "brief_expected_outputs": [
+        "list of urls"
+      ],
+      "status": "not_done"
+    },
+    {
+      "serial_number": 3,
+      "description": "Download raw HTML from the found URLs",
+      "function_name": "search_engine_2",
+      "inputs": {
+        "urls": []
+      },
+      "brief_expected_outputs": [
+        "raw html file paths"
+      ],
+      "status": "not_done"
+    },
+    {
+      "serial_number": 4,
+      "description": "Clean the downloaded HTML files",
+      "function_name": "html_cleaner",
+      "inputs": {
+        "list_url_file_path_json": []
+      },
+      "brief_expected_outputs": [
+        "cleaned html file paths"
+      ],
+      "status": "not_done"
+    },
+    {
+      "serial_number": 5,
+      "description": "Merge all cleaned HTML files into one context file",
+      "function_name": "merge_files",
+      "inputs": { 
+        "file_paths": []
+      },
+      "brief_expected_outputs": [
+        "merged file path"
+      ],
+      "status": "not_done",
+    },
+    {
+      "serial_number": 6,
+      "description": "Generate the final answer summarizing the pros and cons of each language",
+      "function_name": "generation_from_context",
+      "inputs": {
+        "whether_path_or_data": "path",
+        "query": "Which language is better, Python or C++, and what are the key differences in performance and syntax?",
+        "context": ""
+      },
+      "brief_expected_outputs": [
+        "full_answer",
+        "after_think_answer"
+      ],
+      "status": "not_done"
+    }
+  ],
+  "variables": [],
+  "env_state": [],
+  "episodic_memory_descriptions": [],
+  "current_function_to_execuete": {
+    "function_name": "",
+    "inputs": {}
+  },
+  "things_to_note": [],
+  "final_goal_completed": "no"
+} 
+
+output should be like this:
+[
+  {
+    "type": "update",
+    "field": "current_function_to_execuete",
+    "serial_number": 0,
+    "updated": {
+      "function_name": "search_query_generation",
+      "inputs": {
+        "sentences": [
+          "Research and compare Python and C++ to determine which language is better overall, covering performance, usage, and syntax."
+        ]
+      }
+    }
+  }
+]
