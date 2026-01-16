@@ -42,12 +42,7 @@ signal.signal(signal.SIGTERM, handle_shutdown)  # kill PID
 signal.signal(signal.SIGINT, handle_shutdown)   # Ctrl+C
 signal.signal(signal.SIGHUP, handle_shutdown)   # terminal close / SSH drop
 
-# Try importing torch for VRAM clearing, handle if not installed
-try:
-    import torch
-    HAS_TORCH = True
-except ImportError:
-    HAS_TORCH = False
+import torch
 
 from llama_cpp import Llama, GGML_TYPE_Q8_0
 
@@ -76,7 +71,7 @@ def clean_memory():
     gc.collect()
     
     # PyTorch CUDA Cache (Critical for embedding models)
-    if HAS_TORCH and torch.cuda.is_available():
+    if torch.cuda.is_available():
         torch.cuda.empty_cache()
         
     print("✨ [SYSTEM] Memory/VRAM Forcefully Cleared.")
@@ -364,8 +359,8 @@ async def execuete(request:ExecueteRequest):
         "log":"" #do something here
     }
 
-@app.post("/make-log")
-async def make_log(request:MakeLogRequest):
+@app.post("/interpret-output")
+async def interpret_output(request:MakeLogRequest):
     global llm
     
     # Safety Check
@@ -408,7 +403,7 @@ async def make_log(request:MakeLogRequest):
     }
 
 @app.post("/update-working-memory")
-async def update_working_memory(request:UpdateWorkingMemoryRequest):
+async def update_working_memory(request:UpdateWorkingMemoryRequest): #keeps size of working memory in check
     global llm
     
     # Safety Check

@@ -684,7 +684,7 @@ app.post("/send-message",async (req:Request,res:Response)=>{
             log=resp2.data.log
             stateUpdateObj=resp2.data.stateUpdationObject
             await updateCompleteHistoryWithStateUpdationObjectAndLogAndRequestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj,
-            log,userCompleteHistory,"make-log")
+            log,userCompleteHistory,"execuete")
         }
         state=updateState(state,stateUpdateObj)
         console.log(`state updated to:`,state)
@@ -692,7 +692,7 @@ app.post("/send-message",async (req:Request,res:Response)=>{
         approved=false
         feedback=""
         while(!approved){
-            let resp3=await axios.post<CustomTypes.makeLogResponseType>("http://localhost:5000/make-log",{
+            let resp3=await axios.post<CustomTypes.interpretOutputResponseType>("http://localhost:5000/interpret-output",{
                 state:state,
                 log:log,
                 feedback:feedback,
@@ -701,7 +701,7 @@ app.post("/send-message",async (req:Request,res:Response)=>{
             })
             stateUpdateObj=resp3.data.stateUpdationObject
             await updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj,
-            userCompleteHistory,"make-log")
+            userCompleteHistory,"interpret-output")
         }
         state=updateState(state,stateUpdateObj)
         console.log(`state updated to:`,state)
@@ -727,7 +727,7 @@ app.post("/send-message",async (req:Request,res:Response)=>{
     //while-loop-start{
     //reasoning
     //execuete
-    //make-log
+    //interpret-output
     //update-working-memory
     //while-loop-end}
     return res.json({

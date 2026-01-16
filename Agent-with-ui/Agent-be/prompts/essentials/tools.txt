@@ -40,7 +40,13 @@ usage:takes file path which has to be read as input and outputs its content
 7. merge_files(file_paths:string[]):merged_file_path:string
 usage:takes multiple file paths as input and merges content of all into one file and outputs its file path
 
-8. make_rag_database(file_path:string):database_path:string
+8. make_rag_database(file_path:string):{
+    "status": "success",
+    "file_path": file_path,
+    "mongo_collection": unique_collection_name,
+    "chroma_collection": unique_collection_name,
+    "mongo_db": mongo_database_name
+}
 usage: takes a file path as input and converts its content into a vector database, gives database path as output
 
 9. retrieval_from_database(database_path:string,list_search_query_top_k:list of {

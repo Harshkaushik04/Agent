@@ -661,7 +661,7 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
             });
             log = resp2.data.log;
             stateUpdateObj = resp2.data.stateUpdationObject;
-            yield updateCompleteHistoryWithStateUpdationObjectAndLogAndRequestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj, log, userCompleteHistory, "make-log");
+            yield updateCompleteHistoryWithStateUpdationObjectAndLogAndRequestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj, log, userCompleteHistory, "execuete");
         }
         state = updateState(state, stateUpdateObj);
         console.log(`state updated to:`, state);
@@ -669,7 +669,7 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
         approved = false;
         feedback = "";
         while (!approved) {
-            let resp3 = yield axios.post("http://localhost:5000/make-log", {
+            let resp3 = yield axios.post("http://localhost:5000/interpret-output", {
                 state: state,
                 log: log,
                 feedback: feedback,
@@ -677,7 +677,7 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
                 chat_number: chat_number
             });
             stateUpdateObj = resp3.data.stateUpdationObject;
-            yield updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj, userCompleteHistory, "make-log");
+            yield updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj, userCompleteHistory, "interpret-output");
         }
         state = updateState(state, stateUpdateObj);
         console.log(`state updated to:`, state);
@@ -702,7 +702,7 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
     //while-loop-start{
     //reasoning
     //execuete
-    //make-log
+    //interpret-output
     //update-working-memory
     //while-loop-end}
     return res.json({
