@@ -113,3 +113,12 @@ update to "/execuete" route: only output log and not stateUpdationObject(only ru
 next to do: 1.make all the tools to be used in "/execuete"
 2. after making all tools, make prompt for "make-log" and then fully test the system
 3. make better ui for formatting chats
+
+17 jan 2026:
+added tools for agents: search_query_generation,search_engine_1,search_engine_2,write_file,read_file,merged_files,html_cleaner,file_checker
+
+new thing proposed: add a field of "satisfied" when returning from "/execuete" or "/interpret-output" 
+routes, if satisfied is no=> repeat the route, effectively creating method to rerun these routes till 
+they are satisfied
+
+also changed name of "/make-log" to "/interpret-output"
