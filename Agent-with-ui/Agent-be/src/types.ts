@@ -385,7 +385,7 @@ export type generateModelRequest=Request<{},{},{
 //while-loop-start{
 //reasoning
 //execuete
-//make-log
+//interpret-output
 //update-working-memory
 //while-loop-end}
 
@@ -454,7 +454,7 @@ export type execueteResponseType={
     valid:boolean
 }
 
-export type makeLogResponseType={
+export type interpretOutputResponseType={
     stateUpdationObject:stateUpdationType[],
     valid:boolean
 }
