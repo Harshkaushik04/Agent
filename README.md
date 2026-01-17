@@ -122,3 +122,12 @@ routes, if satisfied is no=> repeat the route, effectively creating method to re
 they are satisfied
 
 also changed name of "/make-log" to "/interpret-output"
+
+18 jan 2026:
+completed all the tools except "video/audio to text" one
+started learning next.js(intro)
+next to do: 
+1. complete "video/audio to text" tool
+2. complete "/execuete","/interpret-output" and "/update-working-memory" route and also apply "satisfied"
+field in execuete and interpret-output=> then test the whole loop
+3. learn next.js
