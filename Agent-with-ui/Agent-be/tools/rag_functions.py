@@ -12,7 +12,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 import re,time
 from enum import Enum,auto
 from dotenv import load_dotenv
-load_dotenv("../.env")
+load_dotenv("../../.env")
 # ==========================================
 # CONFIG & SETUP
 # ==========================================

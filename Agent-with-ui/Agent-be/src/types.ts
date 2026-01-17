@@ -334,10 +334,15 @@ export type thingsToNotePair={
     updated:thingsToNoteType
 }
 
+export type satisfiedPair={
+    field:"satisfied",
+    updated:string
+}
+
 export type listPair=chatHistoryPair|PreviousActionsAndLogsPair|roughPlanToReachGoalPair|variablesPair|envStatePair|
 episodicMemoryDescriptionsPair|currentFunctionToExecuetePair|thingsToNotePair
 
-export type anyPair=listPair|stringPair
+export type anyPair=listPair|stringPair|satisfiedPair
 export type workingMemorySchemaType={
     chat_history:chatHistoryType[],
     previous_actions_and_logs:addPreviousActionsAndLogsType[],
@@ -350,6 +355,11 @@ export type workingMemorySchemaType={
     current_function_to_execuete:currentFunctionToExecueteType,
     things_to_note:thingsToNoteType[],
     final_goal_completed:string
+}
+
+export type stateAndSatisfiedType={
+    state:workingMemorySchemaType,
+    satisfied:string
 }
 
 export type workingMemoryWithUserSchemaType={
@@ -426,7 +436,8 @@ export type deleteAnyType={
 }
 
 export type addAnyType={
-    type:"add"
+    type:"add",
+    serial_number:number
 }& anyPair
 
 export type updateAnyType={

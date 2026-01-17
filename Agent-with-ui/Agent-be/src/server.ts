@@ -633,6 +633,7 @@ app.post("/send-message",async (req:Request,res:Response)=>{
     let stateUpdateObj:CustomTypes.stateUpdationType[]=[]
     feedback=""
     approved=false
+    let satisfied="yes"
     while(!approved){
         // console.log("request:")
         // console.log("state:",state)
@@ -651,13 +652,16 @@ app.post("/send-message",async (req:Request,res:Response)=>{
     }
     console.log(`stateUpdateObj:`,stateUpdateObj)
     console.log(`old state:`,state)
-    state=updateState(state,stateUpdateObj)
+    let result:CustomTypes.stateAndSatisfiedType=updateState(state,stateUpdateObj,satisfied)
+    state=result.state
+    satisfied=result.satisfied
     console.log(`state updated to:`,state)
     saveStateToStateWithUser(state,stateWithUser)
     let log=""
     while(state.final_goal_completed!="yes"){
         feedback=""
         approved=false
+        satisfied="yes"
         while(!approved){
             let resp1=await axios.post<CustomTypes.resoningResponseType>("http://localhost:5000/reasoning",{
                 state:state,
@@ -669,7 +673,9 @@ app.post("/send-message",async (req:Request,res:Response)=>{
             await updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj,
             userCompleteHistory,"reasoning")
         }
-        state=updateState(state,stateUpdateObj)
+        result=updateState(state,stateUpdateObj,satisfied)
+        state=result.state
+        satisfied=result.satisfied
         console.log(`state updated to:`,state)
         saveStateToStateWithUser(state,stateWithUser)
         approved=false
@@ -686,7 +692,9 @@ app.post("/send-message",async (req:Request,res:Response)=>{
             await updateCompleteHistoryWithStateUpdationObjectAndLogAndRequestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj,
             log,userCompleteHistory,"execuete")
         }
-        state=updateState(state,stateUpdateObj)
+        result=updateState(state,stateUpdateObj,satisfied)
+        state=result.state
+        satisfied=result.satisfied
         console.log(`state updated to:`,state)
         saveStateToStateWithUser(state,stateWithUser)
         approved=false
@@ -703,7 +711,9 @@ app.post("/send-message",async (req:Request,res:Response)=>{
             await updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj,
             userCompleteHistory,"interpret-output")
         }
-        state=updateState(state,stateUpdateObj)
+        result=updateState(state,stateUpdateObj,satisfied)
+        state=result.state
+        satisfied=result.satisfied
         console.log(`state updated to:`,state)
         saveStateToStateWithUser(state,stateWithUser)
         approved=false
@@ -719,7 +729,9 @@ app.post("/send-message",async (req:Request,res:Response)=>{
             await updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj,
             userCompleteHistory,"update-working-memory")
         }
-        state=updateState(state,stateUpdateObj)
+        result=updateState(state,stateUpdateObj,satisfied)
+        state=result.state
+        satisfied=result.satisfied
         console.log(`state updated to:`,state)
         saveStateToStateWithUser(state,stateWithUser)
     }
@@ -768,7 +780,7 @@ function isObjectFieldType(x: string): x is CustomTypes.objectFieldType {
     return CustomTypes.objectFieldValues.includes(x as CustomTypes.objectFieldType)
 }
 //to complete
-function updateState(state:CustomTypes.workingMemorySchemaType,state_updation_object:CustomTypes.stateUpdationType[]){
+function updateState(state:CustomTypes.workingMemorySchemaType,state_updation_object:CustomTypes.stateUpdationType[],satisfied:string):CustomTypes.stateAndSatisfiedType{
     for(let upd of state_updation_object){
         if(upd.type=="delete"){
             if (isListFieldType(upd.field)) {
@@ -808,6 +820,9 @@ function updateState(state:CustomTypes.workingMemorySchemaType,state_updation_ob
                 //@ts-ignore
                 state[upd.field]=upd.updated
             }
+            else if(upd.field=="satisfied"){
+                satisfied=upd.updated
+            }
         }
         else if(upd.type=="update"){
             if(isListFieldType(upd.field)){
@@ -827,8 +842,12 @@ function updateState(state:CustomTypes.workingMemorySchemaType,state_updation_ob
                 state[upd.field]=upd.updated
             }
         }
+        
     }
-    return state
+    return {
+        state:state,
+        satisfied:satisfied
+    }
 }
 
 app.listen(PORT,()=>{
