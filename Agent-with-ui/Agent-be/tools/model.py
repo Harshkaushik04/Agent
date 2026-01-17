@@ -52,7 +52,7 @@ def i_run_model(model_path,prompt,n_gpu_layers,n_ctx,max_tokens,n_batch,temperat
     raw_prompt=convert_history_to_prompt(history)
     stream=model.create_completion(
         prompt=raw_prompt,
-        max_tokens=n_ctx,
+        max_tokens=max_tokens,
         temperature=temperature,
         stream=True,
         stop=["<|im_end|>"]
@@ -76,7 +76,8 @@ def i_run_model(model_path,prompt,n_gpu_layers,n_ctx,max_tokens,n_batch,temperat
     else:
         before_think = ""
         after_think = full_response
-
+        
+    clean_memory(model)
     return full_response, before_think, after_think
 
 def run_model(model_path,prompt):

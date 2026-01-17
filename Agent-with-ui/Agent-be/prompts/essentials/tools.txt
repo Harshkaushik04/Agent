@@ -40,23 +40,23 @@ usage:takes file path which has to be read as input and outputs its content
 7. merge_files(file_paths:string[]):merged_file_path:string
 usage:takes multiple file paths as input and merges content of all into one file and outputs its file path
 
-8. make_rag_database(file_path:string):{
+8. make_rag_database(file_paths:string[]):{
     "status": "success",
     "file_path": file_path,
     "mongo_collection": unique_collection_name,
     "chroma_collection": unique_collection_name,
     "mongo_db": mongo_database_name
 }
-usage: takes a file path as input and converts its content into a vector database, gives database path as output
+usage: takes a list of file path as input and converts its content into a vector database, gives database path as output
 
-9. retrieval_from_database(database_path:string,list_search_query_top_k:list of {
+9. retrieval_from_database({mongo_database:string,mongo_collection:string,chroma_collection:string},list_search_query_top_k:list of {
   search_query:string,
   top_k:number
 }):list of {
   search_query:string,
   retrieved_chunks:string[]
 }
-usage: takes database path,multiple search query with corrosponding top_k(top_k represents the number of top urls to be selected) as input and
+usage: takes database details,multiple search query with corrosponding top_k(top_k represents the number of top urls to be selected) as input and
  outputs retrieved data chunks corrosponding to each search query
 
 10. generation_from_context(whether_path_or_data:string("path" or "data"),query:string,context:string):[full_answer:string,after_think_answer:string]
@@ -82,8 +82,8 @@ usage: takes multiple audio links as input and outputs audio transcript corrospo
 14. question_answer(query:string):answer:string
 usage: takes a query as input and outputs answer
 
-15. summarise(text:string):summary:string
-usage: takes text as input and outputs its summary
+15. summarise(whether_path_or_data:string,text:string):summary:string
+usage: takes whether_path_or_data: either "path" or "data" ,text as input and outputs its summary
 
 16. execuete_file(file_path:string,language:string<python/c/c++>):output:string
 usage:execuetes the file whose file path is given as input and outputs the stdout string from the execueted file

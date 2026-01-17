@@ -1,0 +1,5 @@
+Answer the following query strictly using context given:
+
+context:{context}
+
+query:{query}
