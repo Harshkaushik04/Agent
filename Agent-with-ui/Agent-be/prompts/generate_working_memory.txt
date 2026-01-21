@@ -61,7 +61,7 @@ if needed)
   serial_number:<distinct number>,
   description:<description of particular episodic memory block>
 }
-
+E
 9. things_to_note:(some learnings or other things which were learned from past mistakes of model/some other experience of model)
 list of json objects of form:{
   serial_number:<distinct number>,
@@ -106,13 +106,18 @@ You have access to the following tools. Choose the most efficient one for the cu
 # YOUR TASK
 output a list of stateUpdationObjects to update the working memory state such that:
 1. chat_history:keep same
-2. previous_actions_and_logs:keep same
+2. previous_actions_and_logs:summarise all the steps you took in this and add it in 
+things_to_note, also add a step in rough_plan_to_reach_goal to write this summary to a file to be accessed later,
+if any useful information is obtained from this which might be needed in future interation with user and 
+that information is already not present in episodic memories(find this by using episodic_memory_descriptions), 
+then add it in episodic memory(by adding a step in rough_plan_to_reach_goal to update episodic memory)
 3. final_goal: make a final_goal by analyzing recent user prompt
-4. current_goal: to acheive final_goal you can divide it in multiple concurrent goals, initialise the first goal to be acheived here
+4. current_goal: to acheive final_goal you can divide it in multiple concurrent goals(tools to be execueted which are given to you), 
+initialise the first goal to be acheived here
 5. rough_plan_to_reach_goal: This is ordered list of tools to be run to acheive the goal which you have make by analyzing how to achieve final_goal
 6. variables:keep same
 7. env_state: keep same
 8. episodic_memory_descriptions:keep same
-9. things_to_note:can add a thing to note if needed or can skip it if not needed
+9. things_to_note:can add a thing to note if needed or can skip it if not needed(mostly not needed)
 10. current_function_to_execute: update according to chosen plan
 11. final_goal_completed: initialise to "no"

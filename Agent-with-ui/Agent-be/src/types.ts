@@ -460,7 +460,7 @@ export type resoningResponseType={
 }
 
 export type execueteResponseType={
-    log:string,
+    logs:string[],
     stateUpdationObject:stateUpdationType[],
     valid:boolean
 }

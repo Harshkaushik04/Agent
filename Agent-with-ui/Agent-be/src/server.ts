@@ -1,3 +1,11 @@
+/*old server.ts which was according to this plan is saved in prompts/extras/old_server.txt
+generate_working_memory-> reasoning->execuete->interpret-output->update-working-memory->back to reasoning
+<also a loop in execuete+interpret-output steps based on "satisfied" field
+
+new plan:
+generate_working_memory -> reasoning -> execuete(running+ then llm)[this step can run multiple times 
+without intervention of reasoning based on instruction of llm("satisifaction of llm")] -> go back to reasoning
+*/ 
 import { connectDB, HistoryModel, UserModel,EpisodicMemoryModel,CompleteHistoryModel,WorkingMemoryModel,EpisodicMemoryDescriptionsModel } from "./db.js"
 import { Request, Response, NextFunction } from 'express';
 import express from "express";
@@ -82,11 +90,11 @@ async function updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprova
 
 async function updateCompleteHistoryWithStateUpdationObjectAndLogAndRequestApprovalStateAndUpdation(ws:WebSocket,
     username:string,state:CustomTypes.workingMemorySchemaType,
-    stateUpdationObject:CustomTypes.stateUpdationType[],log:string,
+    stateUpdationObject:CustomTypes.stateUpdationType[],logs:string[],
     userCompleteHistory:HydratedDocument<CustomTypes.completeHistorySchemaType>,role:string
 ){
     //==========================================
-    let content=JSON.stringify(stateUpdationObject)+"\n"+"log: "+log
+    let content=JSON.stringify(stateUpdationObject)+"\n"+"logs: "+JSON.stringify(logs)
     userCompleteHistory.messages.push({
         role:role,
         content:content,
@@ -657,7 +665,7 @@ app.post("/send-message",async (req:Request,res:Response)=>{
     satisfied=result.satisfied
     console.log(`state updated to:`,state)
     saveStateToStateWithUser(state,stateWithUser)
-    let log=""
+    let logs:string[]=[]
     while(state.final_goal_completed!="yes"){
         feedback=""
         approved=false
@@ -678,62 +686,27 @@ app.post("/send-message",async (req:Request,res:Response)=>{
         satisfied=result.satisfied
         console.log(`state updated to:`,state)
         saveStateToStateWithUser(state,stateWithUser)
-        approved=false
-        feedback=""
-        while(!approved){
-            let resp2=await axios.post<CustomTypes.execueteResponseType>("http://localhost:5000/execuete",{
-                state:state,
-                model:model,
-                chat_number:chat_number,
-                feedback:feedback
-            })
-            log=resp2.data.log
-            stateUpdateObj=resp2.data.stateUpdationObject
-            await updateCompleteHistoryWithStateUpdationObjectAndLogAndRequestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj,
-            log,userCompleteHistory,"execuete")
+        while(satisfied!="yes"){
+            approved=false
+            feedback=""
+            while(!approved){
+                let resp2=await axios.post<CustomTypes.execueteResponseType>("http://localhost:5000/execuete",{
+                    state:state,
+                    model:model,
+                    chat_number:chat_number,
+                    feedback:feedback
+                })
+                logs=resp2.data.logs
+                stateUpdateObj=resp2.data.stateUpdationObject
+                await updateCompleteHistoryWithStateUpdationObjectAndLogAndRequestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj,
+                logs,userCompleteHistory,"execuete")
+            }
+            result=updateState(state,stateUpdateObj,satisfied)
+            state=result.state
+            satisfied=result.satisfied
+            console.log(`state updated to:`,state)
+            saveStateToStateWithUser(state,stateWithUser)
         }
-        result=updateState(state,stateUpdateObj,satisfied)
-        state=result.state
-        satisfied=result.satisfied
-        console.log(`state updated to:`,state)
-        saveStateToStateWithUser(state,stateWithUser)
-        approved=false
-        feedback=""
-        while(!approved){
-            let resp3=await axios.post<CustomTypes.interpretOutputResponseType>("http://localhost:5000/interpret-output",{
-                state:state,
-                log:log,
-                feedback:feedback,
-                model:model,
-                chat_number:chat_number
-            })
-            stateUpdateObj=resp3.data.stateUpdationObject
-            await updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj,
-            userCompleteHistory,"interpret-output")
-        }
-        result=updateState(state,stateUpdateObj,satisfied)
-        state=result.state
-        satisfied=result.satisfied
-        console.log(`state updated to:`,state)
-        saveStateToStateWithUser(state,stateWithUser)
-        approved=false
-        feedback=""
-        while(!approved){
-            let resp4=await axios.post<CustomTypes.updateWorkingMemoryResponseType>("http://localhost:5000/update-working-memory",{
-                state:state,
-                feedback:feedback,
-                model:model,
-                chat_number:chat_number
-            })
-            stateUpdateObj=resp4.data.stateUpdationObject
-            await updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj,
-            userCompleteHistory,"update-working-memory")
-        }
-        result=updateState(state,stateUpdateObj,satisfied)
-        state=result.state
-        satisfied=result.satisfied
-        console.log(`state updated to:`,state)
-        saveStateToStateWithUser(state,stateWithUser)
     }
     //generate-working-memory
     //while-loop-start{
