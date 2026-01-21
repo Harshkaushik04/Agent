@@ -14,4 +14,4 @@ def read_file(file_path: str) -> str:
             return content
 
     except Exception as e:
-        return f"Error reading file {file_path}: {e}"
+        print(f"Error reading file {file_path}: {e}")

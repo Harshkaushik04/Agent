@@ -1,7 +1,7 @@
 import sys
 import gc
 import re
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager,redirect_stdout, redirect_stderr
 from fastapi import FastAPI, HTTPException,Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -12,6 +12,21 @@ import json
 import signal
 import threading
 import time
+import io
+from tools.search_query_generation import i_search_query_generation
+from tools.file_checker import file_checker
+from tools.generation_from_context import i_generation_from_context
+from tools.html_cleaner import i_html_cleaner
+from tools.make_rag_database import i_make_rag_database
+from tools.merged_files import merge_files
+from tools.model import i_run_model,load_model,clean_memory
+from tools.question_answer import i_question_answer
+from tools.read_file import read_file
+from tools.write_file import write_file
+from tools.retrieval_from_database import i_retrieval_from_database
+from tools.search_engine_1 import i_search_engine_1
+from tools.search_engine_2 import i_search_engine_2
+from tools.summarise import i_summarise
 
 llm_lock = threading.Lock()
 shutting_down = False
@@ -83,7 +98,42 @@ def load_file(filepath):
             return f.read()
     except FileNotFoundError:
         print(f"Error: File not found at {filepath}")
-        return ""
+        return "file is currently not made"
+
+def extract_output(func:str,inputs:dict[str,str]):
+    capture = io.StringIO()
+    with redirect_stdout(capture), redirect_stderr(capture):
+        match func:
+            case "search_query_generation":
+                output=i_search_query_generation(**inputs)
+            case "search_engine_1":
+                output=i_search_engine_1(**inputs)
+            case "search_engine_2":
+                output=i_search_engine_2(**inputs)
+            case "html_cleaner":
+                output=i_html_cleaner(**inputs)
+            case "write_file":
+                output=write_file(**inputs)
+            case "read_file":
+                output=read_file(**inputs)
+            case "merge_files":
+                output=merge_files(**inputs)
+            case "make_rag_database":
+                output=i_make_rag_database(**inputs)
+            case "retrieval_from_database":
+                output=i_retrieval_from_database(**inputs)
+            case "generation_from_context":
+                output=i_generation_from_context(**inputs)
+            case "file_checker":
+                output=file_checker(**inputs)
+            case "question_answer":
+                output=i_question_answer(**inputs)
+            case "summarise":
+                output=i_summarise(**inputs)
+            case _:
+                output="function not implemented right now"
+    print_output = capture.getvalue()
+    return output,print_output
 
 # --- LIFECYCLE MANAGEMENT ---
 @asynccontextmanager
@@ -115,7 +165,7 @@ def load_model():
         n_batch=512,
         verbose=False
     )
-    print("✅ Model loaded and ready!")
+    print("Model loaded and ready!")
 
 def make_generate_working_memory_prompt(state_json):
     prompt_template=load_file("../prompts/generate_working_memory.txt")
@@ -143,8 +193,16 @@ def make_reasoning_prompt(state_json):
     prompt_template.replace("{{STATE}}",state_json)
     return prompt_template
 
-def make_execuete_prompt():
-    return ""
+def make_execuete_prompt(state_json,function_output,function_stdout_stderr_output):
+    prompt_template=load_file("../prompts/execuete.txt")
+    tools=load_file("../prompts/essentials/tools.txt")
+    example_execuete=load_file("../prompts/essentials/example_execuete.txt")
+    prompt_template.replace("{{TOOLS}}",tools)
+    prompt_template.replace("{{EXAMPLE}}",example_execuete)
+    prompt_template.replace("{{STATE}}",state_json)
+    prompt_template.replace("{{FUNCTION_OUTPUT}}",function_output)
+    prompt_template.replace("{{FUNCTION_STDOUT_STDERR_OUTPUT}}",function_stdout_stderr_output)
+    return prompt_template
 
 def make_log_prompt():
     return ""
@@ -232,7 +290,7 @@ async def generate_working_memory(request:GenerateWorkingMemoryRequest):
         try:
             state=request.state
             json_state=state.model_dump_json()
-            prompt = fake_make_generate_working_memory_prompt(json_state)
+            prompt = make_generate_working_memory_prompt(json_state)
             
             # print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")
 
@@ -281,7 +339,7 @@ async def reasoning(request:ReasoningRequest):
         }
     state=request.state
     json_state=state.model_dump_json()
-    prompt = fake_make_reasoning_prompt(json_state)
+    prompt = make_reasoning_prompt(json_state)
     
     # print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")
 
@@ -326,8 +384,10 @@ async def execuete(request:ExecueteRequest):
         }
     state=request.state
     json_state=state.model_dump_json()
-    prompt = make_reasoning_prompt()
-    
+    current_function=state.current_function_to_execuete.function_name
+    inputs=state.current_function_to_execuete.inputs
+    func_output,func_print_output=extract_output(current_function,inputs)
+    prompt=make_execuete_prompt(json_state,func_output,func_print_output)
     # print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")
 
     # Stream to stdout for debugging

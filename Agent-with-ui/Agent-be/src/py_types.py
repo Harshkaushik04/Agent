@@ -81,7 +81,7 @@ ExecueteRequest=GenerateWorkingMemoryRequest
 
 class MakeLogRequest(BaseModel):
     state:WorkingMemorySchema
-    log:str
+    logs:List[str]
     feedback:str
     model:str
     chat_number:int
