@@ -131,3 +131,31 @@ next to do:
 2. complete "/execuete","/interpret-output" and "/update-working-memory" route and also apply "satisfied"
 field in execuete and interpret-output=> then test the whole loop
 3. learn next.js
+
+21 jan 2026:
+to do next:
+1. write prompts for "/execuete","interpret-output" and "/update-working-memory" routes
+
+things to note:
+1-> updated structure of agent to 
+generate_working_memory -> reasoning -> execuete(running+ then llm)[this step can run multiple times without intervention of reasoning based on instruction of llm("satisifaction of llm")] -> go back to reasoning
+
+overview of tasks done by each step:
+1. generate_working_memory: edit state such that state is ready to do new task given by user and erase
+irrelevent stuff from previous user prompts(still keep some meory because it might be needed for context of what user is asking(maybe transfer majority of things in some kind of seperate memory))
+
+2. reasoning: if this is the first reasoning step => then make rough_plan_to_reach_goal and basically make a plan by updating all the relevent fields
+if its step after the execuete step => then it has these tasks:
+(a) reflect on whether current plan of action is correct or not in order to acheive the final goal => update relevent fields accordingly
+(b) garbage removal: if some context is not needed anymore in the working memory then remove it
+
+3. execuete: this step can run multiple times consecutively if reasoning isnt needed,
+first function is run from current_function_to_execuete field and then llm summarises log to 
+edit previous_actions_and_logs, decides whether its "satisfied" and want to give control to reasoning step or not, also can update the plan according to whether function can successfully or not, etc
+
+2-> "satisfied" field doesnt come seperately in the response by py_server but its part of stateUpdationObject and is hence processed by updateState function in server.ts 
+
+completed: mostly done everything for v1 except these:
+1. examples for reasoning and execuete
+2. make schema for episodic memories and make updateEpisodicMemory function for TOOLS
+3. complete some tools like video_to_text, audio_to_text,etc
