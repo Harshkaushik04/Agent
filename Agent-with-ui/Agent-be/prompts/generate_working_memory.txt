@@ -100,9 +100,6 @@ You have access to the following tools. Choose the most efficient one for the cu
 {{EXAMPLE}}
 ### END OF EXAMPLE ###
 
-# ACTUAL WORKING MEMORY STATE (Real Input)
-{{STATE}}
-
 # YOUR TASK
 output a list of stateUpdationObjects to update the working memory state such that:
 1. chat_history:keep same
@@ -121,3 +118,9 @@ initialise the first goal to be acheived here
 9. things_to_note:can add a thing to note if needed or can skip it if not needed(mostly not needed)
 10. current_function_to_execute: update according to chosen plan
 11. final_goal_completed: initialise to "no"
+
+#ADDITIONAL FEEDBACK GIVEN BY USER BASED ON YOUR PAST MISTAKES ON THIS STEP
+{{FEEDBACK}}
+
+# ACTUAL WORKING MEMORY STATE (Real Input)
+{{STATE}}

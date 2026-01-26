@@ -134,3 +134,15 @@ export const UserModel=mongoose.model("users",users);
 export const EpisodicMemoryModel=mongoose.model("episodicMemory",episodicMemory)
 export const WorkingMemoryModel=mongoose.model("workingMemory",workingMemory)
 export const EpisodicMemoryDescriptionsModel=mongoose.model("episodicMemoryDescriptions",episodicMemoryDescriptions)
+
+/**
+mongo db run command:
+mongod --dbpath ~/mongodb-data
+chroma db run command:
+docker run -d --name chroma-server \
+  -p 8000:8000 \
+  -v /home/harsh/RAG/Agent-with-ui/Agent-be/my_chroma_data:/chroma/chroma \
+  -e IS_PERSISTENT=TRUE \
+  -e PERSIST_DIRECTORY=/chroma/chroma \
+  chromadb/chroma:latest
+ */

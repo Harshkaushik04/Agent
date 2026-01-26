@@ -129,3 +129,9 @@ this mistake doesnt happen again
 10. current_function_to_execute: update this according to updated rough_plan_to_reach_goal 
 11. final_goal_completed: update it to "yes" only if final_goal is acheived and all the steps in 
 rough_plan_to_reach_goal status is "done" 
+
+#ADDITIONAL FEEDBACK GIVEN BY USER BASED ON YOUR PAST MISTAKES ON THIS STEP
+{{FEEDBACK}}
+
+# ACTUAL WORKING MEMORY STATE (Real Input)
+{{STATE}}

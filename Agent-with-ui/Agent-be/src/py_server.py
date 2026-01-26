@@ -28,6 +28,12 @@ from tools.search_engine_1 import i_search_engine_1
 from tools.search_engine_2 import i_search_engine_2
 from tools.summarise import i_summarise
 
+from openai import OpenAI
+from dotenv import load_dotenv
+import os
+
+load_dotenv("../../.env")
+
 llm_lock = threading.Lock()
 shutting_down = False
 current_generation = False
@@ -68,6 +74,11 @@ MAX_TOKENS=4196
 TEMPERATURE=0.6
 HOST = "0.0.0.0"
 PORT = 5000
+
+client = OpenAI(
+  base_url="https://openrouter.ai/api/v1",
+  api_key=os.getenv("OPENROUTER_API_KEY"),
+)
 
 # Global variable to hold the model
 llm = None
@@ -167,13 +178,14 @@ def load_model():
     )
     print("Model loaded and ready!")
 
-def make_generate_working_memory_prompt(state_json):
+def make_generate_working_memory_prompt(state_json,feedback):
     prompt_template=load_file("../prompts/generate_working_memory.txt")
     tools=load_file("../prompts/essentials/tools.txt")
     example_generate_working_memory=load_file("../prompts/essentials/example_generate_working_memory.txt")
-    prompt_template.replace("{{TOOLS}}",tools)
-    prompt_template.replace("{{EXAMPLE}}",example_generate_working_memory)
-    prompt_template.replace("{{STATE}}",state_json)
+    prompt_template=prompt_template.replace("{{TOOLS}}",tools)
+    prompt_template=prompt_template.replace("{{EXAMPLE}}",example_generate_working_memory)
+    prompt_template=prompt_template.replace("{{STATE}}",state_json)
+    prompt_template=prompt_template.replace("{{FEEDBACK}}",feedback)
     return prompt_template
 
 def fake_make_generate_working_memory_prompt(state_json):
@@ -184,24 +196,26 @@ def fake_make_reasoning_prompt(state_json):
     prompt=load_file("../prompts/extras/fake_test_reasoning.txt")
     return prompt
 
-def make_reasoning_prompt(state_json):
+def make_reasoning_prompt(state_json,feedback):
     prompt_template=load_file("../prompts/reasoning.txt")
     tools=load_file("../prompts/essentials/tools.txt")
     example_reasoning=load_file("../prompts/essentials/example_reasoning.txt")
-    prompt_template.replace("{{TOOLS}}",tools)
-    prompt_template.replace("{{EXAMPLE}}",example_reasoning)
-    prompt_template.replace("{{STATE}}",state_json)
+    prompt_template=prompt_template.replace("{{TOOLS}}",tools)
+    prompt_template=prompt_template.replace("{{EXAMPLE}}",example_reasoning)
+    prompt_template=prompt_template.replace("{{STATE}}",state_json)
+    prompt_template=prompt_template.replace("{{FEEDBACK}}",feedback)
     return prompt_template
 
-def make_execuete_prompt(state_json,function_output,function_stdout_stderr_output):
+def make_execuete_prompt(state_json,function_output,function_stdout_stderr_output,feedback):
     prompt_template=load_file("../prompts/execuete.txt")
     tools=load_file("../prompts/essentials/tools.txt")
     example_execuete=load_file("../prompts/essentials/example_execuete.txt")
-    prompt_template.replace("{{TOOLS}}",tools)
-    prompt_template.replace("{{EXAMPLE}}",example_execuete)
-    prompt_template.replace("{{STATE}}",state_json)
-    prompt_template.replace("{{FUNCTION_OUTPUT}}",function_output)
-    prompt_template.replace("{{FUNCTION_STDOUT_STDERR_OUTPUT}}",function_stdout_stderr_output)
+    prompt_template=prompt_template.replace("{{TOOLS}}",tools)
+    prompt_template=prompt_template.replace("{{EXAMPLE}}",example_execuete)
+    prompt_template=prompt_template.replace("{{STATE}}",state_json)
+    prompt_template=prompt_template.replace("{{FUNCTION_OUTPUT}}",function_output)
+    prompt_template=prompt_template.replace("{{FUNCTION_STDOUT_STDERR_OUTPUT}}",function_stdout_stderr_output)
+    prompt_template=prompt_template.replace("{{FEEDBACK}}",feedback)
     return prompt_template
 
 def make_log_prompt():
@@ -289,9 +303,10 @@ async def generate_working_memory(request:GenerateWorkingMemoryRequest):
         current_generation=True
         try:
             state=request.state
+            feedback=request.feedback
             json_state=state.model_dump_json()
-            prompt = make_generate_working_memory_prompt(json_state)
-            
+            prompt = make_generate_working_memory_prompt(json_state,feedback)
+            print("prompt:",prompt)
             # print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")
 
             # Stream to stdout for debugging
@@ -327,7 +342,87 @@ async def generate_working_memory(request:GenerateWorkingMemoryRequest):
         "stateUpdationObject":output_updation_state,
         "valid":True
     }
+@app.post("/openrouter-generate-working-memory")
+async def openrouter_generate_working_memory(request: GenerateWorkingMemoryRequest):
+    global current_generation, shutting_down
+    
+    if shutting_down:
+        raise HTTPException(status_code=503, detail="py server shut down")
+    
+    current_generation = True
+    print("\n[System] Sending request (Non-Streaming)... Waiting for DeepSeek to think...")
+    
+    try:
+        state = request.state
+        feedback = request.feedback
+        json_state = state.model_dump_json()
+        
+        prompt_content = make_generate_working_memory_prompt(json_state, feedback)
+        print("prompt:", prompt_content)
 
+        # FIX: Use Non-Streaming to prevent "Network Lost" on silence
+        response = client.chat.completions.create(
+            extra_headers={
+                "HTTP-Referer": "http://localhost:8000",
+                "X-Title": "Agent Server",
+            },
+            model="deepseek/deepseek-r1-0528:free",
+            messages=[
+                {"role": "user", "content": prompt_content}
+            ],
+            stream=False,      # <--- DISABLED STREAMING FOR STABILITY
+            timeout=600.0      # <--- 10 Minute Timeout
+        )
+
+        print("[System] Response received!")
+
+        # 1. Extract The Message
+        message = response.choices[0].message
+        
+        # 2. Get Answer (Content)
+        final_content_text = message.content or ""
+
+        # 3. Get Thoughts (Reasoning)
+        # (Safely check for 'reasoning_content' as it may not exist in all responses)
+        reasoning_text = getattr(message, 'reasoning_content', "") or ""
+        
+        # If empty, sometimes it's hidden in 'model_extra' depending on SDK version
+        if not reasoning_text and hasattr(message, 'model_extra'):
+            reasoning_text = (message.model_extra or {}).get('reasoning_content', "")
+
+        # Debug Prints
+        if reasoning_text:
+            print(f"\n<think>\n{reasoning_text}\n</think>")
+        print(final_content_text)
+        print("\n------------------------------------------------\n")
+
+        # 4. Reconstruct for your Parser
+        if reasoning_text:
+            full_text = f"<think>{reasoning_text}</think>\n{final_content_text}"
+        else:
+            full_text = final_content_text
+
+    except Exception as e:
+        print(f"API Error: {e}")
+        return {"valid": False, "error": str(e)}
+        
+    finally:
+        current_generation = False
+    
+    # 5. Standard Parsing
+    thought, answer = parse_deepseek_response(full_text)
+    print("answer:",answer)
+    output_updation_state = {}
+    try:
+        output_updation_state = json.loads(answer)
+    except json.JSONDecodeError as e:
+        print(f"json parsing error in [generate_working_memory]:\n {e}")
+        print(f"Failed Answer String: {answer}")
+        
+    return {
+        "stateUpdationObject": output_updation_state,
+        "valid": True
+    }
 @app.post("/reasoning")
 async def reasoning(request:ReasoningRequest):
     global llm
@@ -338,8 +433,9 @@ async def reasoning(request:ReasoningRequest):
             "valid":False
         }
     state=request.state
+    feedback=request.feedback
     json_state=state.model_dump_json()
-    prompt = make_reasoning_prompt(json_state)
+    prompt = make_reasoning_prompt(json_state,feedback)
     
     # print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")
 
@@ -383,11 +479,12 @@ async def execuete(request:ExecueteRequest):
             "valid":False
         }
     state=request.state
+    feedback=request.feedback
     json_state=state.model_dump_json()
     current_function=state.current_function_to_execuete.function_name
     inputs=state.current_function_to_execuete.inputs
     func_output,func_print_output=extract_output(current_function,inputs)
-    prompt=make_execuete_prompt(json_state,func_output,func_print_output)
+    prompt=make_execuete_prompt(json_state,func_output,func_print_output,feedback)
     # print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")
 
     # Stream to stdout for debugging
@@ -417,6 +514,163 @@ async def execuete(request:ExecueteRequest):
         "stateUpdationObject":output_state_updation_object,
         "valid":True,
         "log":"" #do something here
+    }
+
+@app.post("/openrouter-reasoning")
+async def openrouter_reasoning(request: ReasoningRequest):
+    global current_generation, shutting_down
+    
+    if shutting_down:
+        raise HTTPException(status_code=503, detail="py server shut down")
+    
+    current_generation = True
+    full_text = ""
+    
+    try:
+        state = request.state
+        # FIX: Added feedback extraction (was missing in your local version)
+        feedback = request.feedback 
+        json_state = state.model_dump_json()
+        
+        prompt_content = make_reasoning_prompt(json_state, feedback)
+        print("prompt:", prompt_content)
+
+        # 1. Call OpenRouter
+        stream = client.chat.completions.create(
+            extra_headers={
+                "HTTP-Referer": "http://localhost:8000",
+                "X-Title": "Agent Server",
+            },
+            model="deepseek/deepseek-r1-0528:free",
+            messages=[
+                {"role": "user", "content": prompt_content}
+            ],
+            stream=True
+        )
+
+        # 2. Iterate and Stream to Console
+        for chunk in stream:
+            if shutting_down:
+                print("[SYSTEM] Generation interrupted")
+                break
+            
+            delta = chunk.choices[0].delta
+            
+            # Print thoughts (DeepSeek R1 specific)
+            if hasattr(delta, 'reasoning_content') and delta.reasoning_content:
+                sys.stdout.write(delta.reasoning_content)
+                sys.stdout.flush()
+
+            # Print answer
+            if delta.content:
+                sys.stdout.write(delta.content)
+                sys.stdout.flush()
+                full_text += delta.content
+
+        print("\n------------------------------------------------\n")
+        
+    except Exception as e:
+        print(f"API Error in [reasoning]: {e}")
+        return {"valid": False, "error": str(e)}
+        
+    finally:
+        current_generation = False
+    
+    # 3. Parse and Return
+    thought, answer = parse_deepseek_response(full_text)
+    
+    output_state_updation_object = {}
+    try:
+        output_state_updation_object = json.loads(answer)
+    except json.JSONDecodeError as e:
+        print(f"json parsing error in [reasoning]:\n {e}")
+        
+    return {
+        "stateUpdationObject": output_state_updation_object,
+        "valid": True
+    }
+
+
+@app.post("/openrouter-execuete")
+async def openrouter_execute(request: ExecueteRequest):
+    global current_generation, shutting_down
+    
+    if shutting_down:
+        raise HTTPException(status_code=503, detail="py server shut down")
+        
+    current_generation = True
+    full_text = ""
+    
+    try:
+        state = request.state
+        # FIX: Added feedback extraction
+        feedback = request.feedback
+        
+        # 1. Execute the Tool (Local Python Function)
+        current_function = state.current_function_to_execuete.function_name
+        inputs = state.current_function_to_execuete.inputs
+        
+        # NOTE: This runs locally on your server before calling the LLM
+        func_output, func_print_output = extract_output(current_function, inputs)
+        
+        # 2. Prepare Prompt with Tool Outputs
+        json_state = state.model_dump_json()
+        prompt_content = make_execuete_prompt(json_state, func_output, func_print_output, feedback)
+        # print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")
+
+        # 3. Call OpenRouter to Interpret Results
+        stream = client.chat.completions.create(
+            extra_headers={
+                "HTTP-Referer": "http://localhost:8000",
+                "X-Title": "Agent Server",
+            },
+            model="deepseek/deepseek-r1-0528:free",
+            messages=[
+                {"role": "user", "content": prompt_content}
+            ],
+            stream=True
+        )
+
+        for chunk in stream:
+            if shutting_down:
+                print("[SYSTEM] Generation interrupted")
+                break
+
+            delta = chunk.choices[0].delta
+            
+            # Print thoughts
+            if hasattr(delta, 'reasoning_content') and delta.reasoning_content:
+                sys.stdout.write(delta.reasoning_content)
+                sys.stdout.flush()
+
+            # Print answer
+            if delta.content:
+                sys.stdout.write(delta.content)
+                sys.stdout.flush()
+                full_text += delta.content
+
+        print("\n------------------------------------------------\n")
+
+    except Exception as e:
+        print(f"API Error in [execute]: {e}")
+        return {"valid": False, "error": str(e)}
+
+    finally:
+        current_generation = False
+    
+    # 4. Parse and Return
+    thought, answer = parse_deepseek_response(full_text)
+    
+    output_state_updation_object = {}
+    try:
+        output_state_updation_object = json.loads(answer)
+    except json.JSONDecodeError as e:
+        print(f"json parsing error in [execute]:\n {e}")
+        
+    return {
+        "stateUpdationObject": output_state_updation_object,
+        "valid": True,
+        "log": "" # You can populate this if needed
     }
 
 @app.post("/interpret-output")

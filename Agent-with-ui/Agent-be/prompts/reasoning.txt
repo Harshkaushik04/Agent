@@ -106,9 +106,6 @@ You have access to the following tools. Choose the most efficient one for the cu
 {{EXAMPLE}}
 ### END OF EXAMPLE ###
 
-# ACTUAL WORKING MEMORY STATE (Real Input)
-{{STATE}}
-
 # YOUR TASK
 output a list of stateUpdationObjects to update the working memory state such that:
 
@@ -156,3 +153,9 @@ in that case shorten the less important variable if possible
 9. things_to_note: keep same
 10. current_function_to_execuete: if rough_plan_to_reach_goal was changed then update this according to new plan
 11. final_goal_completed: if final_goal is acheived then update it to "yes" else dont update
+
+#ADDITIONAL FEEDBACK GIVEN BY USER BASED ON YOUR PAST MISTAKES ON THIS STEP
+{{FEEDBACK}}
+
+# ACTUAL WORKING MEMORY STATE (Real Input)
+{{STATE}}
