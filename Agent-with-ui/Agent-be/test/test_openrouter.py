@@ -1,0 +1,433 @@
+import os
+import sys
+from openai import OpenAI
+from dotenv import load_dotenv
+
+# Load env variables
+load_dotenv("../../.env")
+
+# ------------------------------------------------------------------
+# CONFIGURATION
+# ------------------------------------------------------------------
+API_KEY = os.getenv("OPENROUTER_API_KEY")
+BASE_URL = "https://openrouter.ai/api/v1"
+MODEL_NAME = "meta-llama/llama-3.3-70b-instruct:free"
+# ------------------------------------------------------------------
+
+def test_api_connection():
+    print(f"Testing connection to: {BASE_URL}")
+    print(f"Using model: {MODEL_NAME}")
+    print("-" * 50)
+
+    try:
+        # Initialize Client
+        client = OpenAI(
+            base_url=BASE_URL,
+            api_key=API_KEY,
+        )
+
+        print("⏳ Stream starting... (You will see the <think> block first)")
+        print("-" * 50)
+
+        # 1. Enable Streaming
+        stream = client.chat.completions.create(
+            extra_headers={
+                "HTTP-Referer": "http://localhost:8000",
+                "X-Title": "API Key Tester",
+            },
+            model=MODEL_NAME,
+            messages=[
+                {"role": "user", "content": """# ROLE
+You are part of an agentic workflow which consists of working memory(state),episodic memory and tools
+,your role is to update the working memory according to the new goal given by user and remove the previous goal if any.
+
+# INPUT DATA
+You will be provided with:
+1. Initial State: initial state of working memory would be given
+2. Available Tools: A list of functions you can execute to interact with the world.
+3. Chat history: list of user prompts and your final responses to the user
+
+# EXPLANATION OF WORKING MEMORY SCHEMA
+
+1. chat_history:list of json objects of form:{
+  serial_number:<distinct number>,
+  role:<user/model>,
+  content:<content outputed by model or by user>
+}
+
+2. previous_actions_and_logs:(list of actions taken before this) list of json objects of form:{
+  serial_number:<distinct number>,
+  description:<description of what this action is doing>,
+  function_name:<exact function name which is being execueted>,
+  inputs:the inputs to be given as argument to the function, this is form of dictionary with key value pair,
+  outputs:list of outputs of function,
+  log:<logs of what happened after execuetion of task>,
+  filter_words:<list of words which describe this action for quick finding this action>
+}
+
+3. final_goal:<the current final goal which is given by most recent user prompt>
+
+4. current_goal:<current goal of what to do in immediate next step>
+
+5. rough_plan_to_reach_goal: list of json objects of form:{
+  serial_number:<distinct number>,
+  description:<description of action to be done in this step>,
+  function_name:<exact function name to be execueted>,
+  inputs:the inputs to be given as argument to the function, this is form of dictionary with key value pair,
+  brief_expected_outputs:list of what expected outputs look like in brief,
+  status:<done/not_done/ongoing>
+}
+
+6. variables: list of json objects of form:{
+  serial_number:<distinct number>,
+  variable_type:<url/summary/context/.....>,
+  description:<description of its usage>,
+  content:<content>,
+  filter_words:<list of words which describe this variable for quick finding variable>
+}
+
+7. env_state:(information about directories/files/.... model can work with)
+list of json objects of form:{
+  serial_number:<distinct number>,
+  description:<description>,
+  content:<content>
+}
+
+8. episodic_memory_descriptions:(list of descriptions of different memory blocks present in episodic memory,
+which are good enough to describe what is stored inside that episodic memory block so that it can be retrieved
+if needed)
+  list of json objects of form:{
+  serial_number:<distinct number>,
+  description:<description of particular episodic memory block>
+}
+E
+9. things_to_note:(some learnings or other things which were learned from past mistakes of model/some other experience of model)
+list of json objects of form:{
+  serial_number:<distinct number>,
+  description:<description>,
+  content:<content>
+}
+
+10. current_function_to_execute:{
+  function_name:<exact function name>,
+  inputs:the inputs to be given as argument to the function, this is form of dictionary with key value pair
+}
+
+11. final_goal_completed:<yes/no>
+
+# EXPLANATION OF stateUpdationObject:
+for add/update/delete an entry in working memory
+json object of form:{
+  type:<add/update/delete>,
+  field:<exact field name>,
+  serial_number:<entry to be changed in that field>,
+  updated:<updated entry(string/dictionary/list)>(applicable for add/update)
+}
+
+# AVAILABLE TOOLS
+You have access to the following tools. Choose the most efficient one for the current step.
+
+(note: string[] means list of string)
+1. search_query_generation(sentences:string[]):list of {
+  sentence:string,
+  search_queries:string[]
+}
+usage: takes multiple sentences as input and outputs search queries corrosponding to each
+
+2. search_engine_1(list_search_query_top_k: list of {
+  search_query:string,
+  top_k:number
+}):list of {
+  search_query:string,
+  urls:string[]
+}
+usage: takes multiple search queries along with (top_k-> represents the number of top urls to be selected) as input 
+and outputs urls corrosponding to each search query
+
+3. search_engine_2(urls:string[]):list of {
+  url:string,
+  file_store_path:string
+}
+usage: takes multiple urls as input and outputs file path corrosponding to each url in which its raw html is stored
+
+4. html_cleaner(list_url_file_path_json:list of {
+  url:string,
+  file_store_path:string
+}):list of {
+  url:string,
+  file_store_path:string
+}
+usage:takes multiple pair of {url,raw html file path} as input and outputs file path of cleaned html corrosponding to each url
+
+5. write_file(file_path:string,content:string,whether_addition:bool):<no output>
+usage:takes file path and the content to be added,whether_addition(if its true then existing file data is not overwritten,else its overwritten by new content)
+as input and writes into the file 
+
+6. read_file(file_path:string):content:str
+usage:takes file path which has to be read as input and outputs its content
+
+7. merge_files(file_paths:string[]):merged_file_path:string
+usage:takes multiple file paths as input and merges content of all into one file and outputs its file path
+
+8. make_rag_database(file_paths:string[]):{
+    "status": "success",
+    "file_path": file_path,
+    "mongo_collection": unique_collection_name,
+    "chroma_collection": unique_collection_name,
+    "mongo_db": mongo_database_name
+}
+usage: takes a list of file path as input and converts its content into a vector database, gives database path as output
+
+9. retrieval_from_database({mongo_database:string,mongo_collection:string,chroma_collection:string},list_search_query_top_k:list of {
+  search_query:string,
+  top_k:number
+}):list of {
+  search_query:string,
+  retrieved_chunks:string[]
+}
+usage: takes database details,multiple search query with corrosponding top_k(top_k represents the number of top urls to be selected) as input and
+ outputs retrieved data chunks corrosponding to each search query
+
+10. generation_from_context(whether_path_or_data:string("path" or "data"),query:string,context:string):[full_answer:string,after_think_answer:string]
+usage: takes search query ,context, whether_path_or_data(its equal to "path" if context contains the file path to context and equal to 
+"data" if context contains the exact context) as input and outputs the answer of search query
+
+11. file_checker(file_path:string):updated_file_path:string
+usage: checks whether a file path exists or not, if it doesnt exists then updated_file_path=file_path but if it does originally exist,
+it outputs another file path which earlier didnt exist
+
+12. vidoes_to_text(video_links:string[]):list of {
+  video_link:string,
+  transcript:string
+}
+usage: takes multiple video links as input and outputs video transcript corrosponding to each
+
+13. audio_to_text(audio_links:string[]):list of {
+  audio_link:string,
+  transcript:string
+}
+usage: takes multiple audio links as input and outputs audio transcript corrosponding to each
+
+14. question_answer(query:string):answer:string
+usage: takes a query as input and outputs answer
+
+15. summarise(whether_path_or_data:string,text:string):summary:string
+usage: takes whether_path_or_data: either "path" or "data" ,text as input and outputs its summary
+
+16. execuete_file(file_path:string,language:string<python/c/c++>):output:string
+usage:execuetes the file whose file path is given as input and outputs the stdout string from the execueted file
+
+
+# CRITICAL RULES
+1. Your final output MUST only contain a list of jsons and no extra content
+2. only use tools which are provided in AVAILABLE TOOLS section, dont invent tool of your own
+3. **Consistency:** Ensure `serial_number` fields increment logically if you add new items.
+4. **Reasoning:** Before outputting the JSON, you may perform internal chain-of-thought, but the final output must be ONLY the JSON object.
+5. **NO HALLUCINATION:** Do not use the content from the "EXAMPLE" section below. Only use the content provided in the "ACTUAL WORKING MEMORY STATE" section.
+
+# EXAMPLE OF WORKING (One-Shot Learning):
+for initial working state:
+{
+  "chat_history": [{
+    serial_number:1,
+    role:"user",
+    content:"research which language is better python vs c++"
+  }],
+  "previous_actions_and_logs": [],
+  "final_goal": "",
+  "current_goal": "",
+  "rough_plan_to_reach_goal": [],
+  "variables":[],
+  "env_state": [],
+  "episodic_memory_descriptions": [],
+  "things_to_note": [],
+  "current_function_to_execute": {
+    "function_name": "",
+    "inputs": {}
+  },
+  "final_goal_completed": "no"
+}
+output should be like this:
+[
+  {
+    "type": "update",
+    "field": "final_goal",
+    "serial_number": 0,
+    "updated": "Research and compare Python and C++ to determine which language is better overall, covering performance, usage, and syntax."
+  },
+  {
+    "type": "update",
+    "field": "current_goal",
+    "serial_number": 0,
+    "updated": "Generate search queries to find general comparisons between Python and C++."
+  },
+  {
+    "type": "add",
+    "field": "rough_plan_to_reach_goal",
+    "serial_number": 1,
+    "updated": {
+      "serial_number": 1,
+      "description": "Generate search queries for general Python vs C++ comparison",
+      "function_name": "search_query_generation",
+      "inputs": {
+        "sentences": ["difference between python and c++", "python vs c++ performance and use cases"]
+      },
+      "brief_expected_outputs": ["search queries"],
+      "status": "ongoing"
+    }
+  },
+  {
+    "type": "add",
+    "field": "rough_plan_to_reach_goal",
+    "serial_number": 2,
+    "updated": {
+      "serial_number": 2,
+      "description": "Search Google for comparison articles",
+      "function_name": "search_engine_1",
+      "inputs": {
+        "list_search_query_top_k": []
+      },
+      "brief_expected_outputs": ["list of urls"],
+      "status": "not_done"
+    }
+  },
+  {
+    "type": "add",
+    "field": "rough_plan_to_reach_goal",
+    "serial_number": 3,
+    "updated": {
+      "serial_number": 3,
+      "description": "Download raw HTML from the found URLs",
+      "function_name": "search_engine_2",
+      "inputs": {
+        "urls": []
+      },
+      "brief_expected_outputs": ["raw html file paths"],
+      "status": "not_done"
+    }
+  },
+  {
+    "type": "add",
+    "field": "rough_plan_to_reach_goal",
+    "serial_number": 4,
+    "updated": {
+      "serial_number": 4,
+      "description": "Clean the downloaded HTML files",
+      "function_name": "html_cleaner",
+      "inputs": {
+        "list_url_file_path_json": []
+      },
+      "brief_expected_outputs": ["cleaned html file paths"],
+      "status": "not_done"
+    }
+  },
+  {
+    "type": "add",
+    "field": "rough_plan_to_reach_goal",
+    "serial_number": 5,
+    "updated": {
+      "serial_number": 5,
+      "description": "Merge all cleaned HTML files into one context file",
+      "function_name": "merge_files",
+      "inputs": {
+        "file_paths": []
+      },
+      "brief_expected_outputs": ["merged file path"],
+      "status": "not_done"
+    }
+  },
+  {
+    "type": "add",
+    "field": "rough_plan_to_reach_goal",
+    "serial_number": 6,
+    "updated": {
+      "serial_number": 6,
+      "description": "Generate the final answer summarizing the pros and cons of each language",
+      "function_name": "generation_from_context",
+      "inputs": {
+        "whether_path_or_data": "path",
+        "query": "Which language is better, Python or C++, and what are the key differences in performance and syntax?",
+        "context": "" 
+      },
+      "brief_expected_outputs": ["full_answer", "after_think_answer"],
+      "status": "not_done"
+    }
+  },
+  {
+    "type": "update",
+    "field": "current_function_to_execute",
+    "serial_number": 0,
+    "updated": {
+      "function_name": "search_query_generation",
+      "inputs": {
+        "sentences": ["difference between python and c++", "python vs c++ pros and cons"]
+      }
+    }
+  },
+  {
+    "type":"update",
+    "field":"final_goal_completed",
+    "serial_number":0,
+    "updated":"no"
+  }
+]
+### END OF EXAMPLE ###
+
+# YOUR TASK
+output a list of stateUpdationObjects to update the working memory state such that:
+1. chat_history:keep same
+2. previous_actions_and_logs:summarise all the steps you took in this and add it in 
+things_to_note, also add a step in rough_plan_to_reach_goal to write this summary to a file to be accessed later,
+if any useful information is obtained from this which might be needed in future interation with user and 
+that information is already not present in episodic memories(find this by using episodic_memory_descriptions), 
+then add it in episodic memory(by adding a step in rough_plan_to_reach_goal to update episodic memory)
+3. final_goal: make a final_goal by analyzing recent user prompt
+4. current_goal: to acheive final_goal you can divide it in multiple concurrent goals(tools to be execueted which are given to you), 
+initialise the first goal to be acheived here
+5. rough_plan_to_reach_goal: This is ordered list of tools to be run to acheive the goal which you have make by analyzing how to achieve final_goal
+6. variables:keep same
+7. env_state: keep same
+8. episodic_memory_descriptions:keep same
+9. things_to_note:can add a thing to note if needed or can skip it if not needed(mostly not needed)
+10. current_function_to_execute: update according to chosen plan
+11. final_goal_completed: initialise to "no"
+
+#ADDITIONAL FEEDBACK GIVEN BY USER BASED ON YOUR PAST MISTAKES ON THIS STEP
+
+
+# ACTUAL WORKING MEMORY STATE (Real Input)
+{"chat_history":[{"serial_number":1,"role":"user","content":"research why harkirat videos are not showing up?"}],"previous_actions_and_logs":[],"final_goal":"","current_goal":"","rough_plan_to_reach_goal":[],"variables":[],"env_state":[],"episodic_memory_descriptions":[],"current_function_to_execuete":{"function_name":"","inputs":{}},"things_to_note":[],"final_goal_completed":"yes"}
+"""}
+            ],
+            stream=True  # <--- This enables the live flow
+        )
+
+        # 2. Print tokens in real-time
+        full_response = ""
+        for chunk in stream:
+            # In streaming mode, content is inside delta.content
+            content = chunk.choices[0].delta.content
+            
+            if content:
+                # write to screen immediately without newlines
+                sys.stdout.write(content) 
+                sys.stdout.flush()
+                full_response += content
+
+        print("\n" + "-" * 50)
+        print("✅ SUCCESS! Stream finished.")
+
+    except Exception as e:
+        print("\n❌ FAILED. See error details below:")
+        print("-" * 50)
+        print(e)
+        print("-" * 50)
+        
+        error_str = str(e).lower()
+        if "401" in error_str:
+            print("👉 Tip: Error 401 usually means the API Key is wrong.")
+        elif "402" in error_str:
+            print("👉 Tip: Error 402 means out of credits.")
+
+if __name__ == "__main__":
+    test_api_connection()

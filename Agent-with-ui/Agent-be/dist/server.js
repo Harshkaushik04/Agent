@@ -7,6 +7,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+/*old server.ts which was according to this plan is saved in prompts/extras/old_server.txt
+generate_working_memory-> reasoning->execuete->interpret-output->update-working-memory->back to reasoning
+<also a loop in execuete+interpret-output steps based on "satisfied" field
+
+new plan:
+generate_working_memory -> reasoning -> execuete(running+ then llm)[this step can run multiple times
+without intervention of reasoning based on instruction of llm("satisifaction of llm")] -> go back to reasoning
+*/
 import { connectDB, HistoryModel, UserModel, CompleteHistoryModel, WorkingMemoryModel } from "./db.js";
 import express from "express";
 import cors from "cors";
@@ -36,11 +44,13 @@ function requestApprovalStateAndUpdation(ws, username, state, stateUpdationObjec
         // const state_string=JSON.stringify(state)
         // const state_updation_string=JSON.stringify(stateUpdationObject)
         console.log(`[requestApprovalStateAndUpdation] sending approval message to frontend`);
+        let message = isStateUpdationValid(stateUpdationObject);
         try {
             ws.send(JSON.stringify({
                 eventType: "approval",
                 state: state,
                 stateUpdationObject: stateUpdationObject,
+                message: message,
                 role: role
             }));
         }
@@ -54,6 +64,8 @@ function requestApprovalStateAndUpdation(ws, username, state, stateUpdationObjec
 }
 function updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprovalStateAndUpdation(ws, username, state, stateUpdationObject, userCompleteHistory, role) {
     return __awaiter(this, void 0, void 0, function* () {
+        console.log(`[send-message][updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprovalStateAndUpdation]
+        stateUpdationObject:`, stateUpdationObject);
         //==========================================
         userCompleteHistory.messages.push({
             role: role,
@@ -78,10 +90,10 @@ function updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprovalState
         //==========================================
     });
 }
-function updateCompleteHistoryWithStateUpdationObjectAndLogAndRequestApprovalStateAndUpdation(ws, username, state, stateUpdationObject, log, userCompleteHistory, role) {
+function updateCompleteHistoryWithStateUpdationObjectAndLogAndRequestApprovalStateAndUpdation(ws, username, state, stateUpdationObject, logs, userCompleteHistory, role) {
     return __awaiter(this, void 0, void 0, function* () {
         //==========================================
-        let content = JSON.stringify(stateUpdationObject) + "\n" + "log: " + log;
+        let content = JSON.stringify(stateUpdationObject) + "\n" + "logs: " + JSON.stringify(logs);
         userCompleteHistory.messages.push({
             role: role,
             content: content,
@@ -217,6 +229,92 @@ function saveStateToStateWithUser(state, stateWithUser) {
         yield stateWithUser.save();
     });
 }
+/*
+  Helper to check if an object has EXACTLY the expected keys (no more, no less).
+ */
+function hasExactKeys(obj, requiredKeys) {
+    if (!obj || typeof obj !== 'object')
+        return false;
+    const objKeys = Object.keys(obj);
+    // 1. Check for missing keys
+    const missing = requiredKeys.filter(k => !objKeys.includes(k));
+    if (missing.length > 0) {
+        return false;
+    }
+    // 2. Check for extra keys
+    const extra = objKeys.filter(k => !requiredKeys.includes(k));
+    if (extra.length > 0) {
+        return false;
+    }
+    return true;
+}
+const CHAT_HISTORY_KEYS = ["serial_number", "role", "content"];
+const ADD_PREVIOUS_ACTIONS_AND_LOGS_KEYS = ["serial_number",
+    "description", "function_name", "inputs", "outputs", "log", "filter_words"];
+const ROUGH_PLAN_TO_REACH_GOAL_KEYS = ["serial_number",
+    "description", "function_name", "inputs", "brief_expected_outputs", "status"
+];
+const VARIABLES_KEYS = ["serial_number", "variable_type",
+    "description", "content", "filter_words"
+];
+const ENV_STATE_KEYS = ["serial_number", "description", "content"];
+const EPISODIC_MEMORY_DESCRIPTIONS_KEYS = ["serial_number", "description"];
+const CURRENT_FUNCTION_TO_EXECUETE_KEYS = ["function_name", "inputs"];
+const THINGS_TO_NOTE_KEYS = ["serial_number", "description", "content"];
+/*
+ Main Validator Function
+ */
+export function isStateUpdationValid(updates) {
+    console.log(`[send-message][isStateUpdationValid] stateUpdationObject:`, updates);
+    if (!Array.isArray(updates))
+        return "stateUpdationObject isnt list";
+    for (const update of updates) {
+        if (hasExactKeys(update, ["type", "field", "serial_number"])) { // type==delete
+            continue;
+        }
+        else if (hasExactKeys(update, ["type", "field", "serial_number", "updated"])) { // type== update or add
+            if (update.field == "satisfied" || update.field == "final_goal" || update.field == "current_goal" || update.field == "final_goal_completed") {
+                if (typeof update.updated !== "string")
+                    return "updated field for satisfied/final_goal/current_goal should be string";
+            }
+            else if (update.field == "chat_history") {
+                if (!hasExactKeys(update.updated, CHAT_HISTORY_KEYS))
+                    return "chat_history updated field isnt correct";
+            }
+            else if (update.field == "previous_actions_and_logs") {
+                if (!hasExactKeys(update.updated, ADD_PREVIOUS_ACTIONS_AND_LOGS_KEYS))
+                    return "previous_actions_and_logs updated field isnt correct";
+            }
+            else if (update.field == "rough_plan_to_reach_goal") {
+                if (!hasExactKeys(update.updated, ROUGH_PLAN_TO_REACH_GOAL_KEYS))
+                    return "rough_plan_to_reach_goal updated field isnt correct";
+            }
+            else if (update.field == "variables") {
+                if (!hasExactKeys(update.updated, VARIABLES_KEYS))
+                    return "variables updated field isnt correct";
+            }
+            else if (update.field == "env_state") {
+                if (!hasExactKeys(update.updated, ENV_STATE_KEYS))
+                    return "env_state updated field isnt correct";
+            }
+            else if (update.field == "episodic_memory_descriptions") {
+                if (!hasExactKeys(update.updated, EPISODIC_MEMORY_DESCRIPTIONS_KEYS))
+                    return "episodic_memory_descriptions updated field isnt correct";
+            }
+            else if (update.field == "things_to_note") {
+                if (!hasExactKeys(update.updated, THINGS_TO_NOTE_KEYS))
+                    return "things_to_note updated field isnt correct";
+            }
+            else {
+                return "field isnt correct";
+            }
+        }
+        else {
+            return "state updation object should have either\n:{type,field,serial_number} or {type,field,serial_number,updated}";
+        }
+    }
+    return "correct";
+}
 // function sendOutput(ws:WebSocket,username:string)
 let approved = false;
 let feedback = "";
@@ -236,9 +334,10 @@ wss.on("connection", function (ws) {
         webSocketToUsername.set(ws, username);
         if (json_message.eventType == "approval") {
             const resolve = pendingApprovals.get(username);
-            if (!resolve) {
-                throw new Error(`[server.ts] No pending approvals from username ${username}`);
-            }
+            //since user can disconnect and then reconnect, this would throw error at server, so not good
+            // if(!resolve){
+            //     throw new Error(`[server.ts] No pending approvals from username ${username}`)
+            // }
             if (json_message.approval == "yes") {
                 approved = true;
             }
@@ -246,8 +345,10 @@ wss.on("connection", function (ws) {
                 approved = false;
                 feedback = (json_message === null || json_message === void 0 ? void 0 : json_message.feedback) ? json_message.feedback : "";
             }
-            resolve(json_message.approval == "yes");
-            pendingApprovals.delete(username);
+            if (resolve) {
+                resolve(json_message.approval == "yes");
+                pendingApprovals.delete(username);
+            }
         }
     });
 });
@@ -613,6 +714,7 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
     let stateUpdateObj = [];
     feedback = "";
     approved = false;
+    let satisfied = "yes";
     while (!approved) {
         // console.log("request:")
         // console.log("state:",state)
@@ -630,13 +732,16 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
     }
     console.log(`stateUpdateObj:`, stateUpdateObj);
     console.log(`old state:`, state);
-    state = updateState(state, stateUpdateObj);
+    let result = updateState(state, stateUpdateObj, satisfied);
+    state = result.state;
+    satisfied = result.satisfied;
     console.log(`state updated to:`, state);
     saveStateToStateWithUser(state, stateWithUser);
-    let log = "";
+    let logs = [];
     while (state.final_goal_completed != "yes") {
         feedback = "";
         approved = false;
+        satisfied = "yes";
         while (!approved) {
             let resp1 = yield axios.post("http://localhost:5000/reasoning", {
                 state: state,
@@ -647,56 +752,31 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
             stateUpdateObj = resp1.data.stateUpdationObject;
             yield updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj, userCompleteHistory, "reasoning");
         }
-        state = updateState(state, stateUpdateObj);
+        result = updateState(state, stateUpdateObj, satisfied);
+        state = result.state;
+        satisfied = result.satisfied;
         console.log(`state updated to:`, state);
         saveStateToStateWithUser(state, stateWithUser);
-        approved = false;
-        feedback = "";
-        while (!approved) {
-            let resp2 = yield axios.post("http://localhost:5000/execuete", {
-                state: state,
-                model: model,
-                chat_number: chat_number,
-                feedback: feedback
-            });
-            log = resp2.data.log;
-            stateUpdateObj = resp2.data.stateUpdationObject;
-            yield updateCompleteHistoryWithStateUpdationObjectAndLogAndRequestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj, log, userCompleteHistory, "execuete");
+        while (satisfied != "yes") {
+            approved = false;
+            feedback = "";
+            while (!approved) {
+                let resp2 = yield axios.post("http://localhost:5000/execuete", {
+                    state: state,
+                    model: model,
+                    chat_number: chat_number,
+                    feedback: feedback
+                });
+                logs = resp2.data.logs;
+                stateUpdateObj = resp2.data.stateUpdationObject;
+                yield updateCompleteHistoryWithStateUpdationObjectAndLogAndRequestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj, logs, userCompleteHistory, "execuete");
+            }
+            result = updateState(state, stateUpdateObj, satisfied);
+            state = result.state;
+            satisfied = result.satisfied;
+            console.log(`state updated to:`, state);
+            saveStateToStateWithUser(state, stateWithUser);
         }
-        state = updateState(state, stateUpdateObj);
-        console.log(`state updated to:`, state);
-        saveStateToStateWithUser(state, stateWithUser);
-        approved = false;
-        feedback = "";
-        while (!approved) {
-            let resp3 = yield axios.post("http://localhost:5000/interpret-output", {
-                state: state,
-                log: log,
-                feedback: feedback,
-                model: model,
-                chat_number: chat_number
-            });
-            stateUpdateObj = resp3.data.stateUpdationObject;
-            yield updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj, userCompleteHistory, "interpret-output");
-        }
-        state = updateState(state, stateUpdateObj);
-        console.log(`state updated to:`, state);
-        saveStateToStateWithUser(state, stateWithUser);
-        approved = false;
-        feedback = "";
-        while (!approved) {
-            let resp4 = yield axios.post("http://localhost:5000/update-working-memory", {
-                state: state,
-                feedback: feedback,
-                model: model,
-                chat_number: chat_number
-            });
-            stateUpdateObj = resp4.data.stateUpdationObject;
-            yield updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj, userCompleteHistory, "update-working-memory");
-        }
-        state = updateState(state, stateUpdateObj);
-        console.log(`state updated to:`, state);
-        saveStateToStateWithUser(state, stateWithUser);
     }
     //generate-working-memory
     //while-loop-start{
@@ -742,7 +822,7 @@ function isObjectFieldType(x) {
     return CustomTypes.objectFieldValues.includes(x);
 }
 //to complete
-function updateState(state, state_updation_object) {
+function updateState(state, state_updation_object, satisfied) {
     for (let upd of state_updation_object) {
         if (upd.type == "delete") {
             if (isListFieldType(upd.field)) {
@@ -782,6 +862,9 @@ function updateState(state, state_updation_object) {
                 //@ts-ignore
                 state[upd.field] = upd.updated;
             }
+            else if (upd.field == "satisfied") {
+                satisfied = upd.updated;
+            }
         }
         else if (upd.type == "update") {
             if (isListFieldType(upd.field)) {
@@ -802,7 +885,10 @@ function updateState(state, state_updation_object) {
             }
         }
     }
-    return state;
+    return {
+        state: state,
+        satisfied: satisfied
+    };
 }
 app.listen(PORT, () => {
     console.log(`server listening at port ${PORT}`);

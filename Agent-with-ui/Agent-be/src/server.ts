@@ -36,17 +36,21 @@ const JWT_SECRET="randomnum1";
 const PORT=3000;
 
 let pendingApprovals=new Map<string,(choice:boolean)=>void>
+
+
 async function requestApprovalStateAndUpdation(ws: WebSocket, username: string, state:CustomTypes.workingMemorySchemaType,
     stateUpdationObject:CustomTypes.stateUpdationType[],role:string
 ): Promise<boolean> {
     // const state_string=JSON.stringify(state)
     // const state_updation_string=JSON.stringify(stateUpdationObject)
     console.log(`[requestApprovalStateAndUpdation] sending approval message to frontend`)
+    let message:string=isStateUpdationValid(stateUpdationObject)
     try{
         ws.send(JSON.stringify({
             eventType: "approval",
             state:state,
             stateUpdationObject:stateUpdationObject,
+            message:message,
             role:role
         }));
     }
@@ -63,6 +67,8 @@ async function updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprova
     stateUpdationObject:CustomTypes.stateUpdationType[],
     userCompleteHistory:HydratedDocument<CustomTypes.completeHistorySchemaType>,role:string
 ){
+    console.log(`[send-message][updateCompleteHistoryWithOnlyStateUpdationObjectAndRequestApprovalStateAndUpdation]
+        stateUpdationObject:`,stateUpdationObject)
     //==========================================
     userCompleteHistory.messages.push({
         role:role,
@@ -239,6 +245,89 @@ async function saveStateToStateWithUser(state:CustomTypes.workingMemorySchemaTyp
     await stateWithUser.save()
 }
 
+/*
+  Helper to check if an object has EXACTLY the expected keys (no more, no less).
+ */
+function hasExactKeys(obj: any, requiredKeys: string[]): boolean {
+    if (!obj || typeof obj !== 'object') return false;
+    const objKeys = Object.keys(obj);
+    
+    // 1. Check for missing keys
+    const missing = requiredKeys.filter(k => !objKeys.includes(k));
+    if (missing.length > 0) {
+        return false;
+    }
+
+    // 2. Check for extra keys
+    const extra = objKeys.filter(k => !requiredKeys.includes(k));
+    if (extra.length > 0) {
+        return false;
+    }
+
+    return true;
+}
+const CHAT_HISTORY_KEYS:(keyof CustomTypes.chatHistoryType)[]=["serial_number","role","content"]
+const ADD_PREVIOUS_ACTIONS_AND_LOGS_KEYS:(keyof CustomTypes.addPreviousActionsAndLogsType)[]=["serial_number",
+    "description","function_name","inputs","outputs","log","filter_words"]
+const ROUGH_PLAN_TO_REACH_GOAL_KEYS:(keyof CustomTypes.roughPlanToReachGoalType)[]=["serial_number",
+    "description","function_name","inputs","brief_expected_outputs","status"
+]
+const VARIABLES_KEYS:(keyof CustomTypes.variablesType)[]=["serial_number","variable_type",
+    "description","content","filter_words"
+]
+const ENV_STATE_KEYS:(keyof CustomTypes.envStateType)[]=["serial_number","description","content"]
+const EPISODIC_MEMORY_DESCRIPTIONS_KEYS:(keyof CustomTypes.episodicMemoryDescriptionsType)[]=["serial_number","description"]
+const CURRENT_FUNCTION_TO_EXECUETE_KEYS:(keyof CustomTypes.currentFunctionToExecueteType)[]=["function_name","inputs"]
+const THINGS_TO_NOTE_KEYS:(keyof CustomTypes.thingsToNoteType)[]=["serial_number","description","content"]
+/*
+ Main Validator Function
+ */
+export function isStateUpdationValid(updates: any[]): string {
+    console.log(`[send-message][isStateUpdationValid] stateUpdationObject:`,updates)
+    if (!Array.isArray(updates)) return "stateUpdationObject isnt list";
+    for (const update of updates) {
+        if(hasExactKeys(update,["type","field","serial_number"])){// type==delete
+            continue
+        }
+        else if(hasExactKeys(update,["type","field","serial_number","updated"])){ // type== update or add
+            if(update.field=="satisfied" || update.field=="final_goal" || update.field=="current_goal" || update.field=="final_goal_completed"){
+                if(typeof update.updated!== "string") return "updated field for satisfied/final_goal/current_goal should be string"
+            }
+            else if(update.field=="chat_history"){
+                if(!hasExactKeys(update.updated,CHAT_HISTORY_KEYS)) return "chat_history updated field isnt correct"
+            }
+            else if(update.field=="previous_actions_and_logs"){
+                if(!hasExactKeys(update.updated,ADD_PREVIOUS_ACTIONS_AND_LOGS_KEYS)) return "previous_actions_and_logs updated field isnt correct"
+            }
+            else if(update.field=="rough_plan_to_reach_goal"){
+                if(!hasExactKeys(update.updated,ROUGH_PLAN_TO_REACH_GOAL_KEYS)) return "rough_plan_to_reach_goal updated field isnt correct"
+            }
+            else if(update.field=="variables"){
+                if(!hasExactKeys(update.updated,VARIABLES_KEYS)) return "variables updated field isnt correct"
+            }
+            else if(update.field=="env_state"){
+                if(!hasExactKeys(update.updated,ENV_STATE_KEYS)) return "env_state updated field isnt correct"   
+            }
+            else if(update.field=="episodic_memory_descriptions"){
+                if(!hasExactKeys(update.updated,EPISODIC_MEMORY_DESCRIPTIONS_KEYS)) return "episodic_memory_descriptions updated field isnt correct"
+            }
+            else if(update.field=="things_to_note"){
+                if(!hasExactKeys(update.updated,THINGS_TO_NOTE_KEYS)) return "things_to_note updated field isnt correct"
+            }
+            else if(update.field=="current_function_to_execuete"){
+                if(!hasExactKeys(update.updated,CURRENT_FUNCTION_TO_EXECUETE_KEYS)) return "current_function_to_execuete updated field isnt correct"
+            }
+            else{
+                return "field isnt correct"
+            }
+        }
+        else{
+            return "state updation object should have either\n:{type,field,serial_number} or {type,field,serial_number,updated}"
+        }
+    }
+    return "correct"
+}
+
 // function sendOutput(ws:WebSocket,username:string)
 let approved=false
 let feedback=""
@@ -257,9 +346,10 @@ wss.on("connection",function(ws:WebSocket){
         webSocketToUsername.set(ws,username)
         if(json_message.eventType=="approval"){
             const resolve=pendingApprovals.get(username)
-            if(!resolve){
-                throw new Error(`[server.ts] No pending approvals from username ${username}`)
-            }
+            //since user can disconnect and then reconnect, this would throw error at server, so not good
+            // if(!resolve){
+            //     throw new Error(`[server.ts] No pending approvals from username ${username}`)
+            // }
             if(json_message.approval=="yes"){
                 approved=true
             }
@@ -267,8 +357,10 @@ wss.on("connection",function(ws:WebSocket){
                 approved=false
                 feedback=json_message?.feedback?json_message.feedback:""
             }
-            resolve(json_message.approval=="yes")
-            pendingApprovals.delete(username)
+            if(resolve){
+                resolve(json_message.approval=="yes")
+                pendingApprovals.delete(username)
+            }
         }
     })
 })

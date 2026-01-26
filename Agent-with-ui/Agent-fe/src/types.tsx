@@ -196,7 +196,7 @@ export type workingMemorySchemaType={
     episodic_memory_descriptions:episodicMemoryDescriptionsType[],
     current_function_to_execuete:currentFunctionToExecueteType,
     things_to_note:thingsToNoteType[],
-    final_goal_completed:boolean
+    final_goal_completed:string
 }
 
 
@@ -231,12 +231,14 @@ export type roughPlanToReachGoalType={
     status:string
 }
 
-export type summariesType={
+export type variablesType={
     serial_number:number,
+    variable_type:string,
     description:string,
     content:string,
     filter_words:string[]
 }
+
 
 export type envStateType={
     serial_number:number,
@@ -315,7 +317,7 @@ export type PreviousActionsAndLogsPair={
 }
 
 export type stringPair={
-    field:"current_goal"|"final_goal",
+    field:"current_goal"|"final_goal"|"final_goal_completed",
     updated:string
 }
 
@@ -324,9 +326,9 @@ export type roughPlanToReachGoalPair={
     updated:roughPlanToReachGoalType
 }
 
-export type summariesPair={
-    field:"summaries",
-    updated:summariesType
+export type variablesPair={
+    field:"variables",
+    updated:variablesType
 }
 
 export type envStatePair={

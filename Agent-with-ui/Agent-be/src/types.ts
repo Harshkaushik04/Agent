@@ -342,7 +342,7 @@ export type satisfiedPair={
 export type listPair=chatHistoryPair|PreviousActionsAndLogsPair|roughPlanToReachGoalPair|variablesPair|envStatePair|
 episodicMemoryDescriptionsPair|currentFunctionToExecuetePair|thingsToNotePair
 
-export type anyPair=listPair|stringPair|satisfiedPair
+export type anyPair=listPair|stringPair|satisfiedPair //{field,updated} fields in all of them 
 export type workingMemorySchemaType={
     chat_history:chatHistoryType[],
     previous_actions_and_logs:addPreviousActionsAndLogsType[],
@@ -429,18 +429,18 @@ export type wsToBackend=wsToBackend_approval|wsToBackend_connect
 
 //state updation 
 // for fields function_to_execuete,current_goal,final_goal => serial_number=0
-export type deleteAnyType={
+export type deleteAnyType={ //{type,field,serial_number}
     type:"delete",
     field:anyFieldType,
     serial_number:number
 }
 
-export type addAnyType={
+export type addAnyType={ //{type,serial_number,field,updated}
     type:"add",
     serial_number:number
 }& anyPair
 
-export type updateAnyType={
+export type updateAnyType={ //{type,serial_number,field,updated}
     type:"update",
     serial_number:number,
 }& anyPair
