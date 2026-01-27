@@ -191,10 +191,10 @@ export type workingMemorySchemaType={
     final_goal:string,
     current_goal:string,
     rough_plan_to_reach_goal:roughPlanToReachGoalType[],
-    summaries:summariesType[],
+    variables:variablesType[],
     env_state:envStateType[],
     episodic_memory_descriptions:episodicMemoryDescriptionsType[],
-    current_function_to_execuete:currentFunctionToExecueteType,
+    current_function_to_execute:currentFunctionToExecuteType,
     things_to_note:thingsToNoteType[],
     final_goal_completed:string
 }
@@ -251,7 +251,7 @@ export type episodicMemoryDescriptionsType={
     description:string
 }
 
-export type currentFunctionToExecueteType={
+export type currentFunctionToExecuteType={
     funcation_name:string,
     inputs:{
         [key:string]:string
@@ -264,8 +264,8 @@ export type thingsToNoteType={
     content:string
 }
 
-export type anyUpdateType=chatHistoryType|addPreviousActionsAndLogsType|roughPlanToReachGoalType|summariesType|
-envStateType|episodicMemoryDescriptionsType|currentFunctionToExecueteType|thingsToNoteType|string
+export type anyUpdateType=chatHistoryType|addPreviousActionsAndLogsType|roughPlanToReachGoalType|variablesType|
+envStateType|episodicMemoryDescriptionsType|currentFunctionToExecuteType|thingsToNoteType|string
 
 export type deleteAnyType={
     updateType:"delete",
@@ -292,7 +292,7 @@ export const listFieldValues = [
   "summaries",
   "env_state",
   "episodic_memory_descriptions",
-  "current_function_to_execuete",
+  "current_function_to_execute",
   "things_to_note",
 ] as const;
 export type listFieldType = typeof listFieldValues[number];
@@ -341,9 +341,9 @@ export type episodicMemoryDescriptionsPair={
     updated:episodicMemoryDescriptionsType
 }
 
-export type currentFunctionToExecuetePair={
-    field:"current_function_to_execuete",
-    updated:currentFunctionToExecueteType
+export type currentFunctionToExecutePair={
+    field:"current_function_to_execute",
+    updated:currentFunctionToExecuteType
 }
 
 export type thingsToNotePair={
@@ -351,8 +351,8 @@ export type thingsToNotePair={
     updated:thingsToNoteType
 }
 
-export type listPair=chatHistoryPair|PreviousActionsAndLogsPair|roughPlanToReachGoalPair|summariesPair|envStatePair|
-episodicMemoryDescriptionsPair|currentFunctionToExecuetePair|thingsToNotePair
+export type listPair=chatHistoryPair|PreviousActionsAndLogsPair|roughPlanToReachGoalPair|variablesPair|envStatePair|
+episodicMemoryDescriptionsPair|currentFunctionToExecutePair|thingsToNotePair
 
 export type anyPair=listPair|stringPair
 

@@ -25,7 +25,7 @@ You will be provided with:
 2. previous_actions_and_logs:(list of actions taken before this) list of json objects of form:{
   serial_number:<distinct number>,
   description:<description of what this action is doing>,
-  function_name:<exact function name which is being execueted>,
+  function_name:<exact function name which is being executed>,
   inputs:the inputs to be given as argument to the function, this is form of dictionary with key value pair,
   outputs:list of outputs of function,
   log:<logs of what happened after execuetion of task>,
@@ -39,7 +39,7 @@ You will be provided with:
 5. rough_plan_to_reach_goal: list of json objects of form:{
   serial_number:<distinct number>,
   description:<description of action to be done in this step>,
-  function_name:<exact function name to be execueted>,
+  function_name:<exact function name to be executed>,
   inputs:the inputs to be given as argument to the function, this is form of dictionary with key value pair,
   brief_expected_outputs:list of what expected outputs look like in brief,
   status:<done/not_done/ongoing>
@@ -127,7 +127,7 @@ if this is not first agent loop:
 your task to do is:
 (a) reflect on whether the final_goal is being acheived by current rough_plan_to_reach_goal by reflecting on fields like 
 rough_plan_to_reach_goal, current_goal, previous_actions_and_logs,things_to_note
-if you find that this rough_plan_to_reach_goal is not on correct path then update it and accordingly update current_goal and current_function_to_execuete
+if you find that this rough_plan_to_reach_goal is not on correct path then update it and accordingly update current_goal and current_function_to_execute
 else if you find that rough_plan_to_reach_goal is correct then dont update 
 
 (b) garbage removal: you can delete or shorten previous_actions_and_logs and variables if you find some information is not needed in any future steps
@@ -142,7 +142,7 @@ threshold for variables: if number of elements in it>6
 4. current_goal: update this if you want to update rough_plan_to_reach_goal and keep value accordingly
 5. rough_plan_to_reach_goal:(This is ordered list of tools to be run to acheive the goal), keep same if its good enough to acheive final goal
 or else update it, for making the decision whether to keep same or update it, take these fields in consideration:
-rough_plan_to_reach_goal,current_goal,things_to_note,current_function_to_execuete
+rough_plan_to_reach_goal,current_goal,things_to_note,current_function_to_execute
 also, check whether if plan you are making is actually been tested before and failed or not based on things_to_note,
 you can you variables,env_state and episodic_memory_descriptions to facilitate your decision
 6. variables: keep same if all variables are important and number of elements in variables <=6 ,delete the irrelevent variable which would not be needed in future steps 
@@ -151,7 +151,7 @@ in that case shorten the less important variable if possible
 7. env_state:keep same
 8. episodic_memory_descriptions:keep same
 9. things_to_note: keep same
-10. current_function_to_execuete: if rough_plan_to_reach_goal was changed then update this according to new plan
+10. current_function_to_execute: if rough_plan_to_reach_goal was changed then update this according to new plan
 11. final_goal_completed: if final_goal is acheived then update it to "yes" else dont update
 
 #ADDITIONAL FEEDBACK GIVEN BY USER BASED ON YOUR PAST MISTAKES ON THIS STEP

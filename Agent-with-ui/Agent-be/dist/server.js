@@ -8,11 +8,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 /*old server.ts which was according to this plan is saved in prompts/extras/old_server.txt
-generate_working_memory-> reasoning->execuete->interpret-output->update-working-memory->back to reasoning
-<also a loop in execuete+interpret-output steps based on "satisfied" field
+generate_working_memory-> reasoning->execute->interpret-output->update-working-memory->back to reasoning
+<also a loop in execute+interpret-output steps based on "satisfied" field
 
 new plan:
-generate_working_memory -> reasoning -> execuete(running+ then llm)[this step can run multiple times
+generate_working_memory -> reasoning -> execute(running+ then llm)[this step can run multiple times
 without intervention of reasoning based on instruction of llm("satisifaction of llm")] -> go back to reasoning
 */
 import { connectDB, HistoryModel, UserModel, CompleteHistoryModel, WorkingMemoryModel } from "./db.js";
@@ -39,11 +39,31 @@ let app = express();
 const JWT_SECRET = "randomnum1";
 const PORT = 3000;
 let pendingApprovals = new Map;
+function hasKey(obj, key) {
+    return key in obj;
+}
+function improveStateUpdationObjectMistakes(updates) {
+    for (const update of updates) {
+        if (update.field == "rough_plan_to_reach_goal") {
+            if (!hasKey(update, "serial_number") || hasKey(update.updated, "serial_number")) {
+                continue;
+            }
+            else {
+                update.updated["serial_number"] = update.serial_number;
+            }
+        }
+    }
+    return updates;
+}
 function requestApprovalStateAndUpdation(ws, username, state, stateUpdationObject, role) {
     return __awaiter(this, void 0, void 0, function* () {
         // const state_string=JSON.stringify(state)
         // const state_updation_string=JSON.stringify(stateUpdationObject)
         console.log(`[requestApprovalStateAndUpdation] sending approval message to frontend`);
+        if (!Array.isArray(stateUpdationObject)) {
+            stateUpdationObject = [];
+        }
+        stateUpdationObject = improveStateUpdationObjectMistakes(stateUpdationObject);
         let message = isStateUpdationValid(stateUpdationObject);
         try {
             ws.send(JSON.stringify({
@@ -140,7 +160,7 @@ function requestApprovalState(ws, username, state) {
 //         variables:stateWithUser.variables,
 //         env_state: stateWithUser.env_state,
 //         episodic_memory_descriptions: stateWithUser.episodic_memory_descriptions,
-//         current_function_to_execuete: stateWithUser.current_function_to_execuete,
+//         current_function_to_execute: stateWithUser.current_function_to_execute,
 //         things_to_note: stateWithUser.things_to_note,
 //         final_goal_completed: stateWithUser.final_goal_completed
 //     }
@@ -206,9 +226,9 @@ function stateWithUserToState(stateWithUser) {
             content: note.content
         })),
         // 3. Single Nested Object
-        current_function_to_execuete: {
-            function_name: ((_a = stateWithUser.current_function_to_execuete) === null || _a === void 0 ? void 0 : _a.function_name) || "",
-            inputs: mapToObject((_b = stateWithUser.current_function_to_execuete) === null || _b === void 0 ? void 0 : _b.inputs)
+        current_function_to_execute: {
+            function_name: ((_a = stateWithUser.current_function_to_execute) === null || _a === void 0 ? void 0 : _a.function_name) || "",
+            inputs: mapToObject((_b = stateWithUser.current_function_to_execute) === null || _b === void 0 ? void 0 : _b.inputs)
         }
     };
     return state;
@@ -223,7 +243,7 @@ function saveStateToStateWithUser(state, stateWithUser) {
         stateWithUser.variables = state.variables;
         stateWithUser.env_state = state.env_state;
         stateWithUser.episodic_memory_descriptions = state.episodic_memory_descriptions;
-        stateWithUser.current_function_to_execuete = state.current_function_to_execuete;
+        stateWithUser.current_function_to_execute = state.current_function_to_execute;
         stateWithUser.things_to_note = state.things_to_note;
         stateWithUser.final_goal_completed = state.final_goal_completed;
         yield stateWithUser.save();
@@ -259,7 +279,7 @@ const VARIABLES_KEYS = ["serial_number", "variable_type",
 ];
 const ENV_STATE_KEYS = ["serial_number", "description", "content"];
 const EPISODIC_MEMORY_DESCRIPTIONS_KEYS = ["serial_number", "description"];
-const CURRENT_FUNCTION_TO_EXECUETE_KEYS = ["function_name", "inputs"];
+const CURRENT_FUNCTION_TO_EXECUTE_KEYS = ["function_name", "inputs"];
 const THINGS_TO_NOTE_KEYS = ["serial_number", "description", "content"];
 /*
  Main Validator Function
@@ -269,10 +289,10 @@ export function isStateUpdationValid(updates) {
     if (!Array.isArray(updates))
         return "stateUpdationObject isnt list";
     for (const update of updates) {
-        if (hasExactKeys(update, ["type", "field", "serial_number"])) { // type==delete
+        if (hasExactKeys(update, ["type", "field", "serial_number"]) && update.type == "delete") { // type==delete
             continue;
         }
-        else if (hasExactKeys(update, ["type", "field", "serial_number", "updated"])) { // type== update or add
+        else if (hasExactKeys(update, ["type", "field", "serial_number", "updated"]) && (update.type == "add" || update.type == "update")) { // type== update or add
             if (update.field == "satisfied" || update.field == "final_goal" || update.field == "current_goal" || update.field == "final_goal_completed") {
                 if (typeof update.updated !== "string")
                     return "updated field for satisfied/final_goal/current_goal should be string";
@@ -304,6 +324,10 @@ export function isStateUpdationValid(updates) {
             else if (update.field == "things_to_note") {
                 if (!hasExactKeys(update.updated, THINGS_TO_NOTE_KEYS))
                     return "things_to_note updated field isnt correct";
+            }
+            else if (update.field == "current_function_to_execute") {
+                if (!hasExactKeys(update.updated, CURRENT_FUNCTION_TO_EXECUTE_KEYS))
+                    return "current_function_to_execute updated field isnt correct";
             }
             else {
                 return "field isnt correct";
@@ -513,7 +537,7 @@ app.post("/load-new-chat", (req, res) => __awaiter(void 0, void 0, void 0, funct
         variables: [],
         env_state: [],
         episodic_memory_descriptions: [],
-        current_function_to_execuete: {
+        current_function_to_execute: {
             function_name: "",
             inputs: {}
         },
@@ -623,7 +647,7 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
             variables: [],
             env_state: [],
             episodic_memory_descriptions: [],
-            current_function_to_execuete: {
+            current_function_to_execute: {
                 function_name: "",
                 inputs: {}
             },
@@ -757,11 +781,12 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
         satisfied = result.satisfied;
         console.log(`state updated to:`, state);
         saveStateToStateWithUser(state, stateWithUser);
+        satisfied = "no";
         while (satisfied != "yes") {
             approved = false;
             feedback = "";
             while (!approved) {
-                let resp2 = yield axios.post("http://localhost:5000/execuete", {
+                let resp2 = yield axios.post("http://localhost:5000/execute", {
                     state: state,
                     model: model,
                     chat_number: chat_number,
@@ -769,7 +794,7 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
                 });
                 logs = resp2.data.logs;
                 stateUpdateObj = resp2.data.stateUpdationObject;
-                yield updateCompleteHistoryWithStateUpdationObjectAndLogAndRequestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj, logs, userCompleteHistory, "execuete");
+                yield updateCompleteHistoryWithStateUpdationObjectAndLogAndRequestApprovalStateAndUpdation(foundWs, username, state, stateUpdateObj, logs, userCompleteHistory, "execute");
             }
             result = updateState(state, stateUpdateObj, satisfied);
             state = result.state;
@@ -781,7 +806,7 @@ app.post("/send-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
     //generate-working-memory
     //while-loop-start{
     //reasoning
-    //execuete
+    //execute
     //interpret-output
     //update-working-memory
     //while-loop-end}
@@ -803,7 +828,7 @@ function initialiseWorkingMemory(user_message) {
         variables: [],
         env_state: [],
         episodic_memory_descriptions: [],
-        current_function_to_execuete: {
+        current_function_to_execute: {
             function_name: "",
             inputs: {}
         },

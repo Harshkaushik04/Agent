@@ -85,5 +85,5 @@ usage: takes a query as input and outputs answer
 15. summarise(whether_path_or_data:string,text:string):summary:string
 usage: takes whether_path_or_data: either "path" or "data" ,text as input and outputs its summary
 
-16. execuete_file(file_path:string,language:string<python/c/c++>):output:string
-usage:execuetes the file whose file path is given as input and outputs the stdout string from the execueted file
+16. execute_file(file_path:string,language:string<python/c/c++>):output:string
+usage:executes the file whose file path is given as input and outputs the stdout string from the executed file

@@ -40,7 +40,7 @@ class EpisodicMemory(BaseModel):
     serial_number:int
     description:str
 
-class CurrentFunctionToExecuete(BaseModel):
+class CurrentFunctionToExecute(BaseModel):
     function_name:str
     inputs:Dict[str,Any]
 
@@ -60,7 +60,7 @@ class WorkingMemorySchema(BaseModel):
     variables:List[Variable]
     env_state: List[EnvState]
     episodic_memory_descriptions: List[EpisodicMemory]
-    current_function_to_execuete:CurrentFunctionToExecuete
+    current_function_to_execute:CurrentFunctionToExecute
     things_to_note:List[ThingsToNode]
     final_goal_completed:str
 
@@ -77,7 +77,7 @@ class GenerateWorkingMemoryRequest(BaseModel):
     chat_number:int
 
 ReasoningRequest=GenerateWorkingMemoryRequest
-ExecueteRequest=GenerateWorkingMemoryRequest
+ExecuteRequest=GenerateWorkingMemoryRequest
 
 class MakeLogRequest(BaseModel):
     state:WorkingMemorySchema
@@ -97,7 +97,7 @@ __all__ = [
     "Message", 
     "GenerateWorkingMemoryRequest",
     "ReasoningRequest", 
-    "ExecueteRequest", 
+    "ExecuteRequest", 
     "MakeLogRequest", 
     "UpdateWorkingMemoryRequest"
 ]

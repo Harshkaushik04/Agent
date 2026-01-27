@@ -171,7 +171,7 @@ role types:
 "model"
 "generate-working-memory"
 "reasoning"
-"execuete"
+"execute"
 "make-log"
 "update-working-memory"
  */
@@ -248,7 +248,7 @@ export type episodicMemoryDescriptionsType={
     description:string
 }
 
-export type currentFunctionToExecueteType={
+export type currentFunctionToExecuteType={
     function_name:string,
     inputs:{
         [key:string]:string
@@ -262,7 +262,7 @@ export type thingsToNoteType={
 }
 
 export type anyUpdateType=chatHistoryType|addPreviousActionsAndLogsType|roughPlanToReachGoalType|variablesType|
-envStateType|episodicMemoryDescriptionsType|currentFunctionToExecueteType|thingsToNoteType|string
+envStateType|episodicMemoryDescriptionsType|currentFunctionToExecuteType|thingsToNoteType|string
 
 export const listFieldValues = [
   "chat_history",
@@ -276,7 +276,7 @@ export const listFieldValues = [
 export type listFieldType = typeof listFieldValues[number];
 
 export const objectFieldValues=[
-    "current_function_to_execuete"
+    "current_function_to_execute"
 ]
 export type objectFieldType= typeof objectFieldValues[number];
 
@@ -324,9 +324,9 @@ export type episodicMemoryDescriptionsPair={
     updated:episodicMemoryDescriptionsType
 }
 
-export type currentFunctionToExecuetePair={
-    field:"current_function_to_execuete",
-    updated:currentFunctionToExecueteType
+export type currentFunctionToExecutePair={
+    field:"current_function_to_execute",
+    updated:currentFunctionToExecuteType
 }
 
 export type thingsToNotePair={
@@ -340,7 +340,7 @@ export type satisfiedPair={
 }
 
 export type listPair=chatHistoryPair|PreviousActionsAndLogsPair|roughPlanToReachGoalPair|variablesPair|envStatePair|
-episodicMemoryDescriptionsPair|currentFunctionToExecuetePair|thingsToNotePair
+episodicMemoryDescriptionsPair|currentFunctionToExecutePair|thingsToNotePair
 
 export type anyPair=listPair|stringPair|satisfiedPair //{field,updated} fields in all of them 
 export type workingMemorySchemaType={
@@ -352,7 +352,7 @@ export type workingMemorySchemaType={
     variables:variablesType[],
     env_state:envStateType[],
     episodic_memory_descriptions:episodicMemoryDescriptionsType[],
-    current_function_to_execuete:currentFunctionToExecueteType,
+    current_function_to_execute:currentFunctionToExecuteType,
     things_to_note:thingsToNoteType[],
     final_goal_completed:string
 }
@@ -374,7 +374,7 @@ export type workingMemoryWithUserSchemaType={
     variables:variablesType[],
     env_state:envStateType[],
     episodic_memory_descriptions:episodicMemoryDescriptionsType[],
-    current_function_to_execuete:currentFunctionToExecueteType,
+    current_function_to_execute:currentFunctionToExecuteType,
     things_to_note:thingsToNoteType[],
     final_goal_completed:string
 }
@@ -394,7 +394,7 @@ export type generateModelRequest=Request<{},{},{
 //generate-working-memory
 //while-loop-start{
 //reasoning
-//execuete
+//execute
 //interpret-output
 //update-working-memory
 //while-loop-end}
@@ -428,7 +428,7 @@ export type wsToBackend_connect={
 export type wsToBackend=wsToBackend_approval|wsToBackend_connect
 
 //state updation 
-// for fields function_to_execuete,current_goal,final_goal => serial_number=0
+// for fields function_to_execute,current_goal,final_goal => serial_number=0
 export type deleteAnyType={ //{type,field,serial_number}
     type:"delete",
     field:anyFieldType,
@@ -459,7 +459,7 @@ export type resoningResponseType={
     valid:boolean
 }
 
-export type execueteResponseType={
+export type executeResponseType={
     logs:string[],
     stateUpdationObject:stateUpdationType[],
     valid:boolean

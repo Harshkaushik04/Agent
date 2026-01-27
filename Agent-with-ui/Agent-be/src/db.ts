@@ -101,7 +101,7 @@ const workingMemory=new mongoose.Schema<CustomTypes.workingMemoryWithUserSchemaT
         serial_number:Number,
         description:String
     }],
-    current_function_to_execuete:{
+    current_function_to_execute:{
         function_name:String,
         inputs:{
             type:Map,
@@ -139,7 +139,7 @@ export const EpisodicMemoryDescriptionsModel=mongoose.model("episodicMemoryDescr
 mongo db run command:
 mongod --dbpath ~/mongodb-data
 chroma db run command:
-docker run -d --name chroma-server \
+sudo docker run -d --name chroma-server \
   -p 8000:8000 \
   -v /home/harsh/RAG/Agent-with-ui/Agent-be/my_chroma_data:/chroma/chroma \
   -e IS_PERSISTENT=TRUE \

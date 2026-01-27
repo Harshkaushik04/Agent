@@ -1,9 +1,9 @@
 /*old server.ts which was according to this plan is saved in prompts/extras/old_server.txt
-generate_working_memory-> reasoning->execuete->interpret-output->update-working-memory->back to reasoning
-<also a loop in execuete+interpret-output steps based on "satisfied" field
+generate_working_memory-> reasoning->execute->interpret-output->update-working-memory->back to reasoning
+<also a loop in execute+interpret-output steps based on "satisfied" field
 
 new plan:
-generate_working_memory -> reasoning -> execuete(running+ then llm)[this step can run multiple times 
+generate_working_memory -> reasoning -> execute(running+ then llm)[this step can run multiple times 
 without intervention of reasoning based on instruction of llm("satisifaction of llm")] -> go back to reasoning
 */ 
 import { connectDB, HistoryModel, UserModel,EpisodicMemoryModel,CompleteHistoryModel,WorkingMemoryModel,EpisodicMemoryDescriptionsModel } from "./db.js"
@@ -37,6 +37,24 @@ const PORT=3000;
 
 let pendingApprovals=new Map<string,(choice:boolean)=>void>
 
+function hasKey<T extends Object>(obj:T,key:PropertyKey):boolean{
+    return key in obj
+}
+
+function improveStateUpdationObjectMistakes(updates:any[]){
+    for(const update of updates){
+        if(update.field=="rough_plan_to_reach_goal"){
+            if(!hasKey(update,"serial_number") || hasKey(update.updated,"serial_number")){
+                continue
+            }
+            else{
+                update.updated["serial_number"]=update.serial_number
+            }
+        }
+    }
+    return updates
+}
+
 
 async function requestApprovalStateAndUpdation(ws: WebSocket, username: string, state:CustomTypes.workingMemorySchemaType,
     stateUpdationObject:CustomTypes.stateUpdationType[],role:string
@@ -44,6 +62,10 @@ async function requestApprovalStateAndUpdation(ws: WebSocket, username: string, 
     // const state_string=JSON.stringify(state)
     // const state_updation_string=JSON.stringify(stateUpdationObject)
     console.log(`[requestApprovalStateAndUpdation] sending approval message to frontend`)
+    if (!Array.isArray(stateUpdationObject)) {
+        stateUpdationObject = [];
+    }
+    stateUpdationObject=improveStateUpdationObjectMistakes(stateUpdationObject)
     let message:string=isStateUpdationValid(stateUpdationObject)
     try{
         ws.send(JSON.stringify({
@@ -147,7 +169,7 @@ async function requestApprovalState(ws: WebSocket, username: string, state:Custo
 //         variables:stateWithUser.variables,
 //         env_state: stateWithUser.env_state,
 //         episodic_memory_descriptions: stateWithUser.episodic_memory_descriptions,
-//         current_function_to_execuete: stateWithUser.current_function_to_execuete,
+//         current_function_to_execute: stateWithUser.current_function_to_execute,
 //         things_to_note: stateWithUser.things_to_note,
 //         final_goal_completed: stateWithUser.final_goal_completed
 //     }
@@ -221,9 +243,9 @@ function stateWithUserToState(stateWithUser: HydratedDocument<CustomTypes.workin
         })),
 
         // 3. Single Nested Object
-        current_function_to_execuete: {
-            function_name: stateWithUser.current_function_to_execuete?.function_name || "",
-            inputs: mapToObject(stateWithUser.current_function_to_execuete?.inputs)
+        current_function_to_execute: {
+            function_name: stateWithUser.current_function_to_execute?.function_name || "",
+            inputs: mapToObject(stateWithUser.current_function_to_execute?.inputs)
         }
     };
 
@@ -239,7 +261,7 @@ async function saveStateToStateWithUser(state:CustomTypes.workingMemorySchemaTyp
     stateWithUser.variables=state.variables
     stateWithUser.env_state=state.env_state
     stateWithUser.episodic_memory_descriptions=state.episodic_memory_descriptions
-    stateWithUser.current_function_to_execuete=state.current_function_to_execuete
+    stateWithUser.current_function_to_execute=state.current_function_to_execute
     stateWithUser.things_to_note=state.things_to_note
     stateWithUser.final_goal_completed=state.final_goal_completed
     await stateWithUser.save()
@@ -277,7 +299,7 @@ const VARIABLES_KEYS:(keyof CustomTypes.variablesType)[]=["serial_number","varia
 ]
 const ENV_STATE_KEYS:(keyof CustomTypes.envStateType)[]=["serial_number","description","content"]
 const EPISODIC_MEMORY_DESCRIPTIONS_KEYS:(keyof CustomTypes.episodicMemoryDescriptionsType)[]=["serial_number","description"]
-const CURRENT_FUNCTION_TO_EXECUETE_KEYS:(keyof CustomTypes.currentFunctionToExecueteType)[]=["function_name","inputs"]
+const CURRENT_FUNCTION_TO_EXECUTE_KEYS:(keyof CustomTypes.currentFunctionToExecuteType)[]=["function_name","inputs"]
 const THINGS_TO_NOTE_KEYS:(keyof CustomTypes.thingsToNoteType)[]=["serial_number","description","content"]
 /*
  Main Validator Function
@@ -286,10 +308,10 @@ export function isStateUpdationValid(updates: any[]): string {
     console.log(`[send-message][isStateUpdationValid] stateUpdationObject:`,updates)
     if (!Array.isArray(updates)) return "stateUpdationObject isnt list";
     for (const update of updates) {
-        if(hasExactKeys(update,["type","field","serial_number"])){// type==delete
+        if(hasExactKeys(update,["type","field","serial_number"]) && update.type=="delete"){// type==delete
             continue
         }
-        else if(hasExactKeys(update,["type","field","serial_number","updated"])){ // type== update or add
+        else if(hasExactKeys(update,["type","field","serial_number","updated"]) && (update.type=="add" || update.type=="update")){ // type== update or add
             if(update.field=="satisfied" || update.field=="final_goal" || update.field=="current_goal" || update.field=="final_goal_completed"){
                 if(typeof update.updated!== "string") return "updated field for satisfied/final_goal/current_goal should be string"
             }
@@ -314,8 +336,8 @@ export function isStateUpdationValid(updates: any[]): string {
             else if(update.field=="things_to_note"){
                 if(!hasExactKeys(update.updated,THINGS_TO_NOTE_KEYS)) return "things_to_note updated field isnt correct"
             }
-            else if(update.field=="current_function_to_execuete"){
-                if(!hasExactKeys(update.updated,CURRENT_FUNCTION_TO_EXECUETE_KEYS)) return "current_function_to_execuete updated field isnt correct"
+            else if(update.field=="current_function_to_execute"){
+                if(!hasExactKeys(update.updated,CURRENT_FUNCTION_TO_EXECUTE_KEYS)) return "current_function_to_execute updated field isnt correct"
             }
             else{
                 return "field isnt correct"
@@ -528,7 +550,7 @@ app.post("/load-new-chat",async (req:Request,res:Response)=>{
         variables:[],
         env_state:[],
         episodic_memory_descriptions:[],
-        current_function_to_execuete:{
+        current_function_to_execute:{
             function_name:"",
             inputs:{}
         },
@@ -642,7 +664,7 @@ app.post("/send-message",async (req:Request,res:Response)=>{
             variables:[],
             env_state:[],
             episodic_memory_descriptions:[],
-            current_function_to_execuete:{
+            current_function_to_execute:{
                 function_name:"",
                 inputs:{}
             },
@@ -778,11 +800,12 @@ app.post("/send-message",async (req:Request,res:Response)=>{
         satisfied=result.satisfied
         console.log(`state updated to:`,state)
         saveStateToStateWithUser(state,stateWithUser)
+        satisfied="no"
         while(satisfied!="yes"){
             approved=false
             feedback=""
             while(!approved){
-                let resp2=await axios.post<CustomTypes.execueteResponseType>("http://localhost:5000/execuete",{
+                let resp2=await axios.post<CustomTypes.executeResponseType>("http://localhost:5000/execute",{
                     state:state,
                     model:model,
                     chat_number:chat_number,
@@ -791,7 +814,7 @@ app.post("/send-message",async (req:Request,res:Response)=>{
                 logs=resp2.data.logs
                 stateUpdateObj=resp2.data.stateUpdationObject
                 await updateCompleteHistoryWithStateUpdationObjectAndLogAndRequestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj,
-                logs,userCompleteHistory,"execuete")
+                logs,userCompleteHistory,"execute")
             }
             result=updateState(state,stateUpdateObj,satisfied)
             state=result.state
@@ -803,7 +826,7 @@ app.post("/send-message",async (req:Request,res:Response)=>{
     //generate-working-memory
     //while-loop-start{
     //reasoning
-    //execuete
+    //execute
     //interpret-output
     //update-working-memory
     //while-loop-end}
@@ -826,7 +849,7 @@ function initialiseWorkingMemory(user_message:string):CustomTypes.workingMemoryS
         variables:[],
         env_state:[],
         episodic_memory_descriptions:[],
-        current_function_to_execuete:{
+        current_function_to_execute:{
             function_name:"",
             inputs:{}
         },

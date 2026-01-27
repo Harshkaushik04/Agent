@@ -107,7 +107,7 @@ just output the following, nothing less nothing more(exactly this) and no extra 
   },
   {
     "type": "update",
-    "field": "current_function_to_execuete",
+    "field": "current_function_to_execute",
     "serial_number": 0,
     "updated": {
       "function_name": "search_query_generation",
