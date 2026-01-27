@@ -163,3 +163,10 @@ completed: mostly done everything for v1 except these:
 27 jan 2026:
 -added openrouter api routes in py_server
 -added checking mechanism for stateUpdationObject sent by py_server in server.ts
+
+-added ```json ``` formatting function
+-did request checking through postman on "/execute" route and did some changes like added to_str function which converts dict/list/other types to string(stringify them)
+
+next to do:
+1. add example_execute
+2. add print statements for each tool so that llm can find what really happened
