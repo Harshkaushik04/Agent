@@ -159,3 +159,7 @@ completed: mostly done everything for v1 except these:
 1. examples for reasoning and execuete
 2. make schema for episodic memories and make updateEpisodicMemory function for TOOLS
 3. complete some tools like video_to_text, audio_to_text,etc
+
+27 jan 2026:
+-added openrouter api routes in py_server
+-added checking mechanism for stateUpdationObject sent by py_server in server.ts
