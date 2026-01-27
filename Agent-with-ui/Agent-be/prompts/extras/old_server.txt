@@ -133,7 +133,7 @@ async function requestApprovalState(ws: WebSocket, username: string, state:Custo
 //         variables:stateWithUser.variables,
 //         env_state: stateWithUser.env_state,
 //         episodic_memory_descriptions: stateWithUser.episodic_memory_descriptions,
-//         current_function_to_execuete: stateWithUser.current_function_to_execuete,
+//         current_function_to_execute: stateWithUser.current_function_to_execute,
 //         things_to_note: stateWithUser.things_to_note,
 //         final_goal_completed: stateWithUser.final_goal_completed
 //     }
@@ -207,9 +207,9 @@ function stateWithUserToState(stateWithUser: HydratedDocument<CustomTypes.workin
         })),
 
         // 3. Single Nested Object
-        current_function_to_execuete: {
-            function_name: stateWithUser.current_function_to_execuete?.function_name || "",
-            inputs: mapToObject(stateWithUser.current_function_to_execuete?.inputs)
+        current_function_to_execute: {
+            function_name: stateWithUser.current_function_to_execute?.function_name || "",
+            inputs: mapToObject(stateWithUser.current_function_to_execute?.inputs)
         }
     };
 
@@ -225,7 +225,7 @@ async function saveStateToStateWithUser(state:CustomTypes.workingMemorySchemaTyp
     stateWithUser.variables=state.variables
     stateWithUser.env_state=state.env_state
     stateWithUser.episodic_memory_descriptions=state.episodic_memory_descriptions
-    stateWithUser.current_function_to_execuete=state.current_function_to_execuete
+    stateWithUser.current_function_to_execute=state.current_function_to_execute
     stateWithUser.things_to_note=state.things_to_note
     stateWithUser.final_goal_completed=state.final_goal_completed
     await stateWithUser.save()
@@ -428,7 +428,7 @@ app.post("/load-new-chat",async (req:Request,res:Response)=>{
         variables:[],
         env_state:[],
         episodic_memory_descriptions:[],
-        current_function_to_execuete:{
+        current_function_to_execute:{
             function_name:"",
             inputs:{}
         },
@@ -542,7 +542,7 @@ app.post("/send-message",async (req:Request,res:Response)=>{
             variables:[],
             env_state:[],
             episodic_memory_descriptions:[],
-            current_function_to_execuete:{
+            current_function_to_execute:{
                 function_name:"",
                 inputs:{}
             },
@@ -682,7 +682,7 @@ app.post("/send-message",async (req:Request,res:Response)=>{
             approved=false
             feedback=""
             while(!approved){
-                let resp2=await axios.post<CustomTypes.execueteResponseType>("http://localhost:5000/execuete",{
+                let resp2=await axios.post<CustomTypes.executeResponseType>("http://localhost:5000/execute",{
                     state:state,
                     model:model,
                     chat_number:chat_number,
@@ -691,7 +691,7 @@ app.post("/send-message",async (req:Request,res:Response)=>{
                 logs=resp2.data.logs
                 stateUpdateObj=resp2.data.stateUpdationObject
                 await updateCompleteHistoryWithStateUpdationObjectAndLogAndRequestApprovalStateAndUpdation(foundWs,username,state,stateUpdateObj,
-                logs,userCompleteHistory,"execuete")
+                logs,userCompleteHistory,"execute")
             }
             result=updateState(state,stateUpdateObj,satisfied)
             state=result.state
@@ -740,7 +740,7 @@ app.post("/send-message",async (req:Request,res:Response)=>{
     //generate-working-memory
     //while-loop-start{
     //reasoning
-    //execuete
+    //execute
     //interpret-output
     //update-working-memory
     //while-loop-end}
@@ -763,7 +763,7 @@ function initialiseWorkingMemory(user_message:string):CustomTypes.workingMemoryS
         variables:[],
         env_state:[],
         episodic_memory_descriptions:[],
-        current_function_to_execuete:{
+        current_function_to_execute:{
             function_name:"",
             inputs:{}
         },

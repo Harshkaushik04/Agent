@@ -26,7 +26,7 @@ You will be provided with:
 2. previous_actions_and_logs:(list of actions taken before this) list of json objects of form:{
   serial_number:<distinct number>,
   description:<description of what this action is doing>,
-  function_name:<exact function name which is being execueted>,
+  function_name:<exact function name which is being executed>,
   inputs:the inputs to be given as argument to the function, this is form of dictionary with key value pair,
   outputs:list of outputs of function,
   log:<logs of what happened after execuetion of task>,
@@ -40,7 +40,7 @@ You will be provided with:
 5. rough_plan_to_reach_goal: list of json objects of form:{
   serial_number:<distinct number>,
   description:<description of action to be done in this step>,
-  function_name:<exact function name to be execueted>,
+  function_name:<exact function name to be executed>,
   inputs:the inputs to be given as argument to the function, this is form of dictionary with key value pair,
   brief_expected_outputs:list of what expected outputs look like in brief,
   status:<done/not_done/ongoing>
@@ -147,10 +147,10 @@ also if the action was succesful then update the status of that action in list
 7. env_state:keep same
 8. episodic_memory_descriptions:keep same
 9. things_to_note: if the previous action failed then add an element in this list describing the
-final_goal and current_goal you were trying to acheive and current_function_to_execuete you were execueting
+final_goal and current_goal you were trying to acheive and current_function_to_execute you were execueting
 and what error came up 
 else if action was successful you can either add an element in list if you deem it important or 
 else not add any element
-10. current_function_to_execuete: if rough_plan_to_reach_goal was changed then update this according to 
+10. current_function_to_execute: if rough_plan_to_reach_goal was changed then update this according to 
 new plan, else if action was successful then update this according to next action in rough_plan_to_reach_goal list.
 11. final_goal_completed: if final_goal is acheived then update it to "yes" else dont update

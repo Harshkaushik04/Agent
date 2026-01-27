@@ -7,7 +7,7 @@ You will be provided with:
 1. Initial State: initial state of working memory would be given
 2. Available Tools: A list of functions you can execute to interact with the world.
 3. Chat history: list of user prompts and your final responses to the user
-4. Execueted function output: direct return value of the function
+4. Executed function output: direct return value of the function
 5. Exueted function logs(stdout/stderr): console logs generated during execution, which may contain errors or progress details
 
 # EXPLANATION OF WORKING MEMORY SCHEMA
@@ -21,7 +21,7 @@ You will be provided with:
 2. previous_actions_and_logs:(list of actions taken before this) list of json objects of form:{
   serial_number:<distinct number>,
   description:<description of what this action is doing>,
-  function_name:<exact function name which is being execueted>,
+  function_name:<exact function name which is being executed>,
   inputs:the inputs to be given as argument to the function, this is form of dictionary with key value pair,
   outputs:list of outputs of function,
   log:<logs of what happened after execuetion of task>,
@@ -35,7 +35,7 @@ You will be provided with:
 5. rough_plan_to_reach_goal: list of json objects of form:{
   serial_number:<distinct number>,
   description:<description of action to be done in this step>,
-  function_name:<exact function name to be execueted>,
+  function_name:<exact function name to be executed>,
   inputs:the inputs to be given as argument to the function, this is form of dictionary with key value pair,
   brief_expected_outputs:list of what expected outputs look like in brief,
   status:<done/not_done/ongoing>

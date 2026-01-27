@@ -8,7 +8,7 @@ export const listFieldValues = [
     "things_to_note",
 ];
 export const objectFieldValues = [
-    "current_function_to_execuete"
+    "current_function_to_execute"
 ];
 export const stringFieldValues = [
     "final_goal",

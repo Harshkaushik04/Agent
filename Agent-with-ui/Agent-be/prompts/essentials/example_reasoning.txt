@@ -92,7 +92,7 @@ for initial working state:
   "variables": [],
   "env_state": [],
   "episodic_memory_descriptions": [],
-  "current_function_to_execuete": {
+  "current_function_to_execute": {
     "function_name": "",
     "inputs": {}
   },
@@ -104,7 +104,7 @@ output should be like this:
 [
   {
     "type": "update",
-    "field": "current_function_to_execuete",
+    "field": "current_function_to_execute",
     "serial_number": 0,
     "updated": {
       "function_name": "search_query_generation",

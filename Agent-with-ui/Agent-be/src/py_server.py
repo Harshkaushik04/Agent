@@ -110,17 +110,28 @@ def load_file(filepath):
     except FileNotFoundError:
         print(f"Error: File not found at {filepath}")
         return "file is currently not made"
+def to_str(obj):
+    if obj is None:
+        return "none"
+    elif isinstance(obj,(dict,list)):
+        return json.dumps(obj,indent=2,ensure_ascii=False)
+    return str(obj)
 
-def extract_output(func:str,inputs:dict[str,str]):
+async def extract_output(func:str,inputs:dict[str,str]):
+    if(func=="search_query_generation" or func=="generation_from_context" or func=="question_answer" 
+       or func=="summarise"):
+        inputs["llm"]=llm
+    if(func=="retrieval_from_database"):
+        inputs["gen_llm"]=llm
     capture = io.StringIO()
     with redirect_stdout(capture), redirect_stderr(capture):
         match func:
             case "search_query_generation":
                 output=i_search_query_generation(**inputs)
             case "search_engine_1":
-                output=i_search_engine_1(**inputs)
+                output=await i_search_engine_1(**inputs)
             case "search_engine_2":
-                output=i_search_engine_2(**inputs)
+                output=await i_search_engine_2(**inputs)
             case "html_cleaner":
                 output=i_html_cleaner(**inputs)
             case "write_file":
@@ -144,6 +155,8 @@ def extract_output(func:str,inputs:dict[str,str]):
             case _:
                 output="function not implemented right now"
     print_output = capture.getvalue()
+    print_output=to_str(print_output)
+    output=to_str(output)
     return output,print_output
 
 # --- LIFECYCLE MANAGEMENT ---
@@ -188,11 +201,11 @@ def make_generate_working_memory_prompt(state_json,feedback):
     prompt_template=prompt_template.replace("{{FEEDBACK}}",feedback)
     return prompt_template
 
-def fake_make_generate_working_memory_prompt(state_json):
+def fake_make_generate_working_memory_prompt(state_json,feedback):
     prompt=load_file("../prompts/extras/fake_test_gwm_2.txt")
     return prompt
 
-def fake_make_reasoning_prompt(state_json):
+def fake_make_reasoning_prompt(state_json,feedback):
     prompt=load_file("../prompts/extras/fake_test_reasoning.txt")
     return prompt
 
@@ -206,16 +219,16 @@ def make_reasoning_prompt(state_json,feedback):
     prompt_template=prompt_template.replace("{{FEEDBACK}}",feedback)
     return prompt_template
 
-def make_execuete_prompt(state_json,function_output,function_stdout_stderr_output,feedback):
-    prompt_template=load_file("../prompts/execuete.txt")
+def make_execute_prompt(state_json,function_output,function_stdout_stderr_output,feedback):
+    prompt_template=load_file("../prompts/execute.txt")
     tools=load_file("../prompts/essentials/tools.txt")
-    example_execuete=load_file("../prompts/essentials/example_execuete.txt")
-    prompt_template=prompt_template.replace("{{TOOLS}}",tools)
-    prompt_template=prompt_template.replace("{{EXAMPLE}}",example_execuete)
-    prompt_template=prompt_template.replace("{{STATE}}",state_json)
-    prompt_template=prompt_template.replace("{{FUNCTION_OUTPUT}}",function_output)
-    prompt_template=prompt_template.replace("{{FUNCTION_STDOUT_STDERR_OUTPUT}}",function_stdout_stderr_output)
-    prompt_template=prompt_template.replace("{{FEEDBACK}}",feedback)
+    example_execute=load_file("../prompts/essentials/example_execute.txt")
+    prompt_template=prompt_template.replace("{{TOOLS}}",to_str(tools))
+    prompt_template=prompt_template.replace("{{EXAMPLE}}",to_str(example_execute))
+    prompt_template=prompt_template.replace("{{STATE}}",to_str(state_json))
+    prompt_template=prompt_template.replace("{{FUNCTION_OUTPUT}}",to_str(function_output))
+    prompt_template=prompt_template.replace("{{FUNCTION_STDOUT_STDERR_OUTPUT}}",to_str(function_stdout_stderr_output))
+    prompt_template=prompt_template.replace("{{FEEDBACK}}",to_str(feedback))
     return prompt_template
 
 def make_log_prompt():
@@ -248,6 +261,32 @@ def parse_deepseek_response(raw_text: str):
         thought_process = ""
         final_answer = raw_text.strip()
     return thought_process, final_answer
+
+import re
+import json
+#solves problem for ```json ```
+def extract_json_from_markdown(text: str) -> str:
+    """
+    Extracts the JSON content from a string that might be wrapped in Markdown code blocks.
+    Example input: "Here is the JSON:\n```json\n{'a': 1}\n```"
+    Example output: "{'a': 1}"
+    """
+    # Pattern explanation:
+    # ```       -> Matches opening backticks
+    # (?:json)? -> Optionally matches the language identifier "json" (non-capturing)
+    # \s* -> Matches optional whitespace/newlines after the tag
+    # (.*?)     -> Captures the actual JSON content (non-greedy)
+    # \s* -> Matches optional whitespace/newlines before the closing tag
+    # ```       -> Matches closing backticks
+    pattern = r"```(?:json)?\s*(.*?)\s*```"
+    
+    match = re.search(pattern, text, re.DOTALL)
+    if match:
+        return match.group(1)  # Return the content inside the backticks
+    
+    # Fallback: If no code blocks are found, return the original text
+    # (The LLM might have sent raw JSON without markdown)
+    return text.strip()
 
 # --- NEW ROUTES ---
 
@@ -305,7 +344,7 @@ async def generate_working_memory(request:GenerateWorkingMemoryRequest):
             state=request.state
             feedback=request.feedback
             json_state=state.model_dump_json()
-            prompt = make_generate_working_memory_prompt(json_state,feedback)
+            prompt = fake_make_generate_working_memory_prompt(json_state,feedback)
             print("prompt:",prompt)
             # print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")
 
@@ -333,9 +372,9 @@ async def generate_working_memory(request:GenerateWorkingMemoryRequest):
             current_generation=False
     
     thought, answer = parse_deepseek_response(full_text)
-    output_updation_state={}
+    output_updation_state=[]
     try:
-        output_updation_state=json.loads(answer)
+        output_updation_state=extract_json_from_markdown(answer)
     except json.JSONDecodeError as e:
         print(f"json parsing error in [generate_working_memory]:\n {e}")
     return {
@@ -412,9 +451,9 @@ async def openrouter_generate_working_memory(request: GenerateWorkingMemoryReque
     # 5. Standard Parsing
     thought, answer = parse_deepseek_response(full_text)
     print("answer:",answer)
-    output_updation_state = {}
+    output_updation_state = []
     try:
-        output_updation_state = json.loads(answer)
+        output_updation_state = extract_json_from_markdown(answer)
     except json.JSONDecodeError as e:
         print(f"json parsing error in [generate_working_memory]:\n {e}")
         print(f"Failed Answer String: {answer}")
@@ -436,7 +475,7 @@ async def reasoning(request:ReasoningRequest):
     feedback=request.feedback
     json_state=state.model_dump_json()
     prompt = make_reasoning_prompt(json_state,feedback)
-    
+    print("prompt:",prompt)
     # print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")
 
     # Stream to stdout for debugging
@@ -459,17 +498,17 @@ async def reasoning(request:ReasoningRequest):
     
     thought, answer = parse_deepseek_response(full_text)
     try:
-        output_state_updation_object=json.loads(answer)
+        output_state_updation_object=extract_json_from_markdown(answer)
     except json.JSONDecodeError as e:
-        print(f"json parsing error in [generate_working_memory]:\n {e}")
+        print(f"json parsing error in [reasoning]:\n {e}")
     return {
         "stateUpdationObject":output_state_updation_object,
         "valid":True
     }
 
 
-@app.post("/execuete")
-async def execuete(request:ExecueteRequest):
+@app.post("/execute")
+async def execute(request:ExecuteRequest):
     #change this function to run tools instead of llm call and also only return log, instead of stateUpdationObject too
     global llm
     
@@ -481,10 +520,11 @@ async def execuete(request:ExecueteRequest):
     state=request.state
     feedback=request.feedback
     json_state=state.model_dump_json()
-    current_function=state.current_function_to_execuete.function_name
-    inputs=state.current_function_to_execuete.inputs
-    func_output,func_print_output=extract_output(current_function,inputs)
-    prompt=make_execuete_prompt(json_state,func_output,func_print_output,feedback)
+    current_function=state.current_function_to_execute.function_name
+    inputs=state.current_function_to_execute.inputs
+    func_output,func_print_output=await extract_output(current_function,inputs)
+    prompt=make_execute_prompt(json_state,func_output,func_print_output,feedback)
+    print("prompt:",prompt)
     # print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")
 
     # Stream to stdout for debugging
@@ -506,10 +546,11 @@ async def execuete(request:ExecueteRequest):
     print("\n------------------------------------------------\n")
     
     thought, answer = parse_deepseek_response(full_text)
+    output_state_updation_object=[]
     try:
-        output_state_updation_object=json.loads(answer)
+        output_state_updation_object=extract_json_from_markdown(answer)
     except json.JSONDecodeError as e:
-        print(f"json parsing error in [generate_working_memory]:\n {e}")
+        print(f"json parsing error in [execute]:\n {e}")
     return {
         "stateUpdationObject":output_state_updation_object,
         "valid":True,
@@ -579,9 +620,9 @@ async def openrouter_reasoning(request: ReasoningRequest):
     # 3. Parse and Return
     thought, answer = parse_deepseek_response(full_text)
     
-    output_state_updation_object = {}
+    output_state_updation_object = []
     try:
-        output_state_updation_object = json.loads(answer)
+        output_state_updation_object = extract_json_from_markdown(answer)
     except json.JSONDecodeError as e:
         print(f"json parsing error in [reasoning]:\n {e}")
         
@@ -591,8 +632,8 @@ async def openrouter_reasoning(request: ReasoningRequest):
     }
 
 
-@app.post("/openrouter-execuete")
-async def openrouter_execute(request: ExecueteRequest):
+@app.post("/openrouter-execute")
+async def openrouter_execute(request: ExecuteRequest):
     global current_generation, shutting_down
     
     if shutting_down:
@@ -607,15 +648,15 @@ async def openrouter_execute(request: ExecueteRequest):
         feedback = request.feedback
         
         # 1. Execute the Tool (Local Python Function)
-        current_function = state.current_function_to_execuete.function_name
-        inputs = state.current_function_to_execuete.inputs
+        current_function = state.current_function_to_execute.function_name
+        inputs = state.current_function_to_execute.inputs
         
         # NOTE: This runs locally on your server before calling the LLM
-        func_output, func_print_output = extract_output(current_function, inputs)
+        func_output, func_print_output = await extract_output(current_function, inputs)
         
         # 2. Prepare Prompt with Tool Outputs
         json_state = state.model_dump_json()
-        prompt_content = make_execuete_prompt(json_state, func_output, func_print_output, feedback)
+        prompt_content = make_execute_prompt(json_state, func_output, func_print_output, feedback)
         # print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")
 
         # 3. Call OpenRouter to Interpret Results
@@ -661,9 +702,9 @@ async def openrouter_execute(request: ExecueteRequest):
     # 4. Parse and Return
     thought, answer = parse_deepseek_response(full_text)
     
-    output_state_updation_object = {}
+    output_state_updation_object = []
     try:
-        output_state_updation_object = json.loads(answer)
+        output_state_updation_object = extract_json_from_markdown(answer)
     except json.JSONDecodeError as e:
         print(f"json parsing error in [execute]:\n {e}")
         
@@ -707,10 +748,11 @@ async def interpret_output(request:MakeLogRequest):
     print("\n------------------------------------------------\n")
     
     thought, answer = parse_deepseek_response(full_text)
+    output_state_updation_object=[]
     try:
-        output_state_updation_object=json.loads(answer)
+        output_state_updation_object=extract_json_from_markdown(answer)
     except json.JSONDecodeError as e:
-        print(f"json parsing error in [generate_working_memory]:\n {e}")
+        print(f"json parsing error in [interpret_output]:\n {e}")
     return {
         "stateUpdationObject":output_state_updation_object,
         "valid":True
@@ -750,10 +792,11 @@ async def update_working_memory(request:UpdateWorkingMemoryRequest): #keeps size
     print("\n------------------------------------------------\n")
     
     thought, answer = parse_deepseek_response(full_text)
+    output_state_updation_object=[]
     try:
-        output_state_updation_object=json.loads(answer)
+        output_state_updation_object=extract_json_from_markdown(answer)
     except json.JSONDecodeError as e:
-        print(f"json parsing error in [generate_working_memory]:\n {e}")
+        print(f"json parsing error in [update_working_memory]:\n {e}")
     return {
         "stateUpdationObject":output_state_updation_object,
         "valid":True
