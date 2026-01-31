@@ -170,3 +170,8 @@ completed: mostly done everything for v1 except these:
 next to do:
 1. add example_execute
 2. add print statements for each tool so that llm can find what really happened
+
+31 jan 2026:
+-added qwen2.5-7b instruct q4_k_m as new llm model because it seems to be better for agentic json generation and also faster
+-added grammer for llm(gbnf_schema)
+-tested with qwen
