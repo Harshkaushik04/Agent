@@ -66,8 +66,8 @@ const workingMemory=new mongoose.Schema<CustomTypes.workingMemoryWithUserSchemaT
             of:mongoose.Schema.Types.Mixed
         },
         outputs:{
-            type:Map,
-            of:mongoose.Schema.Types.Mixed   
+            type:mongoose.Schema.Types.Mixed,
+            default:{}
         },
         log:String,
         filter_words:[{type:String,default:[]}]
@@ -82,7 +82,10 @@ const workingMemory=new mongoose.Schema<CustomTypes.workingMemoryWithUserSchemaT
             type:Map,
             of:mongoose.Schema.Types.Mixed
         },
-        brief_expected_outputs:[{type:String,default:[]}],
+        brief_expected_outputs:{
+            type:mongoose.Schema.Types.Mixed,
+            default:{}
+        },
         status:String
     }],
     variables:[{

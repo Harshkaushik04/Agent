@@ -159,3 +159,5 @@ in that case shorten the less important variable if possible
 
 # ACTUAL WORKING MEMORY STATE (Real Input)
 {{STATE}}
+
+when you want to end the response, end it with <|im_end|> or # END OF OUTPUT #

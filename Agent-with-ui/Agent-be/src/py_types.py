@@ -12,7 +12,7 @@ class ActionLog(BaseModel):
     description: str
     function_name: str
     inputs: Dict[str, Any]   # Matches { [key:string]: string }
-    outputs: Dict[str, str]
+    outputs: Any
     log: str
     filter_words: List[str]
 
@@ -21,7 +21,7 @@ class PlanStep(BaseModel):
     description: str
     function_name: str
     inputs: Dict[str, Any]
-    brief_expected_outputs: List[str]
+    brief_expected_outputs: Any
     status: str
 
 class Variable(BaseModel):
