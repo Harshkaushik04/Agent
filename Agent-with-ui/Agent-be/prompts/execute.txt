@@ -135,3 +135,5 @@ rough_plan_to_reach_goal status is "done"
 
 # ACTUAL WORKING MEMORY STATE (Real Input)
 {{STATE}}
+
+when you want to end the response, end it with <|im_end|> or # END OF OUTPUT #

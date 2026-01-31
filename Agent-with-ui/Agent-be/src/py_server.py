@@ -1,12 +1,9 @@
 import sys
 import gc
-import re
 from contextlib import asynccontextmanager,redirect_stdout, redirect_stderr
 from fastapi import FastAPI, HTTPException,Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
-from typing import List, Optional
 from py_types import *
 import json
 import signal
@@ -27,10 +24,16 @@ from tools.retrieval_from_database import i_retrieval_from_database
 from tools.search_engine_1 import i_search_engine_1
 from tools.search_engine_2 import i_search_engine_2
 from tools.summarise import i_summarise
-
+from helper_functions import *
 from openai import OpenAI
 from dotenv import load_dotenv
 import os
+
+from llama_cpp import Llama, LlamaGrammar
+from gbnf_schema import GBNF_SCHEMA
+
+# Grammer=LlamaGrammar.from_string(GBNF_SCHEMA)
+Grammer=None
 
 load_dotenv("../../.env")
 
@@ -68,8 +71,9 @@ import torch
 from llama_cpp import Llama, GGML_TYPE_Q8_0
 
 # --- CONFIGURATION ---
-MODEL_PATH = "/home/harsh/RAG/models/DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf"
-N_CTX = 80000
+# MODEL_PATH = "/home/harsh/RAG/models/DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf"
+MODEL_PATH="/home/harsh/RAG/models/qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf"
+N_CTX = 20000
 MAX_TOKENS=4196
 TEMPERATURE=0.6
 HOST = "0.0.0.0"
@@ -102,22 +106,29 @@ def clean_memory():
         
     print("✨ [SYSTEM] Memory/VRAM Forcefully Cleared.")
 
-def load_file(filepath):
-    """Helper to read file content safely"""
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        print(f"Error: File not found at {filepath}")
-        return "file is currently not made"
-def to_str(obj):
-    if obj is None:
-        return "none"
-    elif isinstance(obj,(dict,list)):
-        return json.dumps(obj,indent=2,ensure_ascii=False)
-    return str(obj)
+# --- HELPER: LOAD MODEL ---
+def load_model():
+    global llm
+    if llm is not None:
+        print(" Model is already loaded.")
+        return
+
+    print(f" Loading model into VRAM: {MODEL_PATH}")
+    llm = Llama(
+        model_path=MODEL_PATH,
+        n_ctx=N_CTX,
+        n_gpu_layers=-1,
+        flash_attn=True,
+        # Using Q4_0 as discussed for stability with high context
+        type_k=GGML_TYPE_Q8_0, 
+        type_v=GGML_TYPE_Q8_0,
+        n_batch=512,
+        verbose=False
+    )
+    print("Model loaded and ready!")
 
 async def extract_output(func:str,inputs:dict[str,str]):
+    print("func:",func,"\ninputs:",inputs)
     if(func=="search_query_generation" or func=="generation_from_context" or func=="question_answer" 
        or func=="summarise"):
         inputs["llm"]=llm
@@ -170,123 +181,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# --- HELPER: LOAD MODEL ---
-def load_model():
-    global llm
-    if llm is not None:
-        print(" Model is already loaded.")
-        return
-
-    print(f" Loading model into VRAM: {MODEL_PATH}")
-    llm = Llama(
-        model_path=MODEL_PATH,
-        n_ctx=N_CTX,
-        n_gpu_layers=-1,
-        flash_attn=True,
-        # Using Q4_0 as discussed for stability with high context
-        type_k=GGML_TYPE_Q8_0, 
-        type_v=GGML_TYPE_Q8_0,
-        n_batch=512,
-        verbose=False
-    )
-    print("Model loaded and ready!")
-
-def make_generate_working_memory_prompt(state_json,feedback):
-    prompt_template=load_file("../prompts/generate_working_memory.txt")
-    tools=load_file("../prompts/essentials/tools.txt")
-    example_generate_working_memory=load_file("../prompts/essentials/example_generate_working_memory.txt")
-    prompt_template=prompt_template.replace("{{TOOLS}}",tools)
-    prompt_template=prompt_template.replace("{{EXAMPLE}}",example_generate_working_memory)
-    prompt_template=prompt_template.replace("{{STATE}}",state_json)
-    prompt_template=prompt_template.replace("{{FEEDBACK}}",feedback)
-    return prompt_template
-
-def fake_make_generate_working_memory_prompt(state_json,feedback):
-    prompt=load_file("../prompts/extras/fake_test_gwm_2.txt")
-    return prompt
-
-def fake_make_reasoning_prompt(state_json,feedback):
-    prompt=load_file("../prompts/extras/fake_test_reasoning.txt")
-    return prompt
-
-def make_reasoning_prompt(state_json,feedback):
-    prompt_template=load_file("../prompts/reasoning.txt")
-    tools=load_file("../prompts/essentials/tools.txt")
-    example_reasoning=load_file("../prompts/essentials/example_reasoning.txt")
-    prompt_template=prompt_template.replace("{{TOOLS}}",tools)
-    prompt_template=prompt_template.replace("{{EXAMPLE}}",example_reasoning)
-    prompt_template=prompt_template.replace("{{STATE}}",state_json)
-    prompt_template=prompt_template.replace("{{FEEDBACK}}",feedback)
-    return prompt_template
-
-def make_execute_prompt(state_json,function_output,function_stdout_stderr_output,feedback):
-    prompt_template=load_file("../prompts/execute.txt")
-    tools=load_file("../prompts/essentials/tools.txt")
-    example_execute=load_file("../prompts/essentials/example_execute.txt")
-    prompt_template=prompt_template.replace("{{TOOLS}}",to_str(tools))
-    prompt_template=prompt_template.replace("{{EXAMPLE}}",to_str(example_execute))
-    prompt_template=prompt_template.replace("{{STATE}}",to_str(state_json))
-    prompt_template=prompt_template.replace("{{FUNCTION_OUTPUT}}",to_str(function_output))
-    prompt_template=prompt_template.replace("{{FUNCTION_STDOUT_STDERR_OUTPUT}}",to_str(function_stdout_stderr_output))
-    prompt_template=prompt_template.replace("{{FEEDBACK}}",to_str(feedback))
-    return prompt_template
-
-def make_log_prompt():
-    return ""
-
-def make_update_working_memory_prompt():
-    return ""
-
-# --- EXISTING HELPERS ---
-def convert_history_to_prompt(history: List[Message]) -> str:
-    prompt = ""
-    for msg in history:
-        if msg.role == "system":
-            prompt += f"<|im_start|>system\n{msg.content}<|im_end|>\n"
-        elif msg.role == "user":
-            prompt += f"<|im_start|>user\n{msg.content}<|im_end|>\n"
-        elif msg.role == "assistant" or msg.role == "model":
-            # Prefer 'after_think' if it exists (the actual answer), otherwise content
-            content = msg.after_think if msg.after_think else msg.content
-            prompt += f"<|im_start|>assistant\n{content}<|im_end|>\n"
-    prompt += "<|im_start|>assistant\n"
-    return prompt
-
-def parse_deepseek_response(raw_text: str):
-    if "</think>" in raw_text:
-        parts = raw_text.split("</think>")
-        thought_process = parts[0].replace("<think>", "").strip()
-        final_answer = parts[1].strip()
-    else:
-        thought_process = ""
-        final_answer = raw_text.strip()
-    return thought_process, final_answer
-
-import re
-import json
-#solves problem for ```json ```
-def extract_json_from_markdown(text: str) -> str:
-    """
-    Extracts the JSON content from a string that might be wrapped in Markdown code blocks.
-    Example input: "Here is the JSON:\n```json\n{'a': 1}\n```"
-    Example output: "{'a': 1}"
-    """
-    # Pattern explanation:
-    # ```       -> Matches opening backticks
-    # (?:json)? -> Optionally matches the language identifier "json" (non-capturing)
-    # \s* -> Matches optional whitespace/newlines after the tag
-    # (.*?)     -> Captures the actual JSON content (non-greedy)
-    # \s* -> Matches optional whitespace/newlines before the closing tag
-    # ```       -> Matches closing backticks
-    pattern = r"```(?:json)?\s*(.*?)\s*```"
-    
-    match = re.search(pattern, text, re.DOTALL)
-    if match:
-        return match.group(1)  # Return the content inside the backticks
-    
-    # Fallback: If no code blocks are found, return the original text
-    # (The LLM might have sent raw JSON without markdown)
-    return text.strip()
 
 # --- NEW ROUTES ---
 
@@ -328,7 +222,7 @@ async def open_model_route():
 # --- GENERATE ROUTE (Updated with Safety Check) ---
 @app.post("/generate-working-memory")
 async def generate_working_memory(request:GenerateWorkingMemoryRequest):
-    # print(f"[entered-generate_working_memory]")
+    print(f"[entered-generate_working_memory]")
     global llm,current_generation,shutting_down
     if shutting_down:
         raise HTTPException(status_code=503,detail="py server shut down")
@@ -344,18 +238,35 @@ async def generate_working_memory(request:GenerateWorkingMemoryRequest):
             state=request.state
             feedback=request.feedback
             json_state=state.model_dump_json()
-            prompt = fake_make_generate_working_memory_prompt(json_state,feedback)
+            prompt = make_generate_working_memory_prompt(json_state,feedback)
             print("prompt:",prompt)
             # print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")
 
             # Stream to stdout for debugging
-            stream = llm(
-                prompt,
-                max_tokens=MAX_TOKENS,
-                temperature=TEMPERATURE,
-                stop=["<|im_end|>"],
-                stream=True
-            )
+            if MODEL_PATH=="/home/harsh/RAG/models/qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf":
+                stream = llm(
+                    prompt,
+                    max_tokens=MAX_TOKENS,
+                    temperature=TEMPERATURE,
+                    stop=["<|im_end|>", "# END OF OUTPUT #"],
+                    stream=True,
+                    grammar=Grammer
+                )
+            elif MODEL_PATH=="/home/harsh/RAG/models/DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf":
+                stream = llm(
+                    prompt,
+                    max_tokens=MAX_TOKENS,
+                    temperature=TEMPERATURE,
+                    stop=["<|im_end|>"],
+                    stream=True,
+                    grammar=Grammer
+                )
+            else:
+                print("models other than qwen/deepseek not supported yet")
+                return {
+                    "stateUpdationObject":[],
+                    "valid":True
+                }
 
             full_text = ""
             for output in stream:
@@ -372,13 +283,13 @@ async def generate_working_memory(request:GenerateWorkingMemoryRequest):
             current_generation=False
     
     thought, answer = parse_deepseek_response(full_text)
-    output_updation_state=[]
+    output_state_updation_object=[]
     try:
-        output_updation_state=extract_json_from_markdown(answer)
+        output_state_updation_object=extract_json_from_markdown(answer)
     except json.JSONDecodeError as e:
         print(f"json parsing error in [generate_working_memory]:\n {e}")
     return {
-        "stateUpdationObject":output_updation_state,
+        "stateUpdationObject":output_state_updation_object,
         "valid":True
     }
 @app.post("/openrouter-generate-working-memory")
@@ -451,15 +362,15 @@ async def openrouter_generate_working_memory(request: GenerateWorkingMemoryReque
     # 5. Standard Parsing
     thought, answer = parse_deepseek_response(full_text)
     print("answer:",answer)
-    output_updation_state = []
+    output_state_updation_object = []
     try:
-        output_updation_state = extract_json_from_markdown(answer)
+        output_state_updation_object = extract_json_from_markdown(answer)
     except json.JSONDecodeError as e:
         print(f"json parsing error in [generate_working_memory]:\n {e}")
         print(f"Failed Answer String: {answer}")
         
     return {
-        "stateUpdationObject": output_updation_state,
+        "stateUpdationObject": output_state_updation_object,
         "valid": True
     }
 @app.post("/reasoning")
@@ -478,14 +389,30 @@ async def reasoning(request:ReasoningRequest):
     print("prompt:",prompt)
     # print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")
 
-    # Stream to stdout for debugging
-    stream = llm(
-        prompt,
-        max_tokens=MAX_TOKENS,
-        temperature=TEMPERATURE,
-        stop=["<|im_end|>"],
-        stream=True
-    )
+    if MODEL_PATH=="/home/harsh/RAG/models/qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf":
+                stream = llm(
+                    prompt,
+                    max_tokens=MAX_TOKENS,
+                    temperature=TEMPERATURE,
+                    stop=["<|im_end|>", "# END OF OUTPUT #"],
+                    stream=True,
+                    grammar=Grammer
+                )
+    elif MODEL_PATH=="/home/harsh/RAG/models/DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf":
+        stream = llm(
+            prompt,
+            max_tokens=MAX_TOKENS,
+            temperature=TEMPERATURE,
+            stop=["<|im_end|>"],
+            stream=True,
+            grammar=Grammer
+        )
+    else:
+        print("models other than qwen/deepseek not supported yet")
+        return {
+            "stateUpdationObject":[],
+            "valid":True
+        }
 
     full_text = ""
     for output in stream:
@@ -497,12 +424,13 @@ async def reasoning(request:ReasoningRequest):
     print("\n------------------------------------------------\n")
     
     thought, answer = parse_deepseek_response(full_text)
+    output_state_updation_object=[]
     try:
-        output_state_updation_object=extract_json_from_markdown(answer)
+        output_state_updation=extract_json_from_markdown(answer)
     except json.JSONDecodeError as e:
         print(f"json parsing error in [reasoning]:\n {e}")
     return {
-        "stateUpdationObject":output_state_updation_object,
+        "stateUpdationObject":output_state_updation,
         "valid":True
     }
 
@@ -527,15 +455,30 @@ async def execute(request:ExecuteRequest):
     print("prompt:",prompt)
     # print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")
 
-    # Stream to stdout for debugging
-    stream = llm(
-        prompt,
-        max_tokens=N_CTX,
-        temperature=TEMPERATURE,
-        stop=["<|im_end|>"],
-        stream=True
-    )
-
+    if MODEL_PATH=="/home/harsh/RAG/models/qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf":
+                stream = llm(
+                    prompt,
+                    max_tokens=MAX_TOKENS,
+                    temperature=TEMPERATURE,
+                    stop=["<|im_end|>", "# END OF OUTPUT #"],
+                    stream=True,
+                    grammar=Grammer
+                )
+    elif MODEL_PATH=="/home/harsh/RAG/models/DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf":
+        stream = llm(
+            prompt,
+            max_tokens=MAX_TOKENS,
+            temperature=TEMPERATURE,
+            stop=["<|im_end|>"],
+            stream=True,
+            grammar=Grammer
+        )
+    else:
+        print("models other than qwen/deepseek not supported yet")
+        return {
+            "stateUpdationObject":[],
+            "valid":True
+        }
     full_text = ""
     for output in stream:
         token = output['choices'][0]['text']
@@ -730,13 +673,30 @@ async def interpret_output(request:MakeLogRequest):
     # print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")
 
     # Stream to stdout for debugging
-    stream = llm(
-        prompt,
-        max_tokens=N_CTX,
-        temperature=TEMPERATURE,
-        stop=["<|im_end|>"],
-        stream=True
-    )
+    if MODEL_PATH=="/home/harsh/RAG/models/qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf":
+                stream = llm(
+                    prompt,
+                    max_tokens=MAX_TOKENS,
+                    temperature=TEMPERATURE,
+                    stop=["<|im_end|>", "# END OF OUTPUT #"],
+                    stream=True,
+                    grammar=Grammer
+                )
+    elif MODEL_PATH=="/home/harsh/RAG/models/DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf":
+        stream = llm(
+            prompt,
+            max_tokens=MAX_TOKENS,
+            temperature=TEMPERATURE,
+            stop=["<|im_end|>"],
+            stream=True,
+            grammar=Grammer
+        )
+    else:
+        print("models other than qwen/deepseek not supported yet")
+        return {
+            "stateUpdationObject":[],
+            "valid":True
+        }
 
     full_text = ""
     for output in stream:
@@ -774,13 +734,30 @@ async def update_working_memory(request:UpdateWorkingMemoryRequest): #keeps size
     # print(f"\n--- NEW REQUEST [Chat Length: {len(request.history)}] ---")
 
     # Stream to stdout for debugging
-    stream = llm(
-        prompt,
-        max_tokens=N_CTX,
-        temperature=TEMPERATURE,
-        stop=["<|im_end|>"],
-        stream=True
-    )
+    if MODEL_PATH=="/home/harsh/RAG/models/qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf":
+                stream = llm(
+                    prompt,
+                    max_tokens=MAX_TOKENS,
+                    temperature=TEMPERATURE,
+                    stop=["<|im_end|>", "# END OF OUTPUT #"],
+                    stream=True,
+                    grammar=Grammer
+                )
+    elif MODEL_PATH=="/home/harsh/RAG/models/DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf":
+        stream = llm(
+            prompt,
+            max_tokens=MAX_TOKENS,
+            temperature=TEMPERATURE,
+            stop=["<|im_end|>"],
+            stream=True,
+            grammar=Grammer
+        )
+    else:
+        print("models other than qwen/deepseek not supported yet")
+        return {
+            "stateUpdationObject":[],
+            "valid":True
+        }
 
     full_text = ""
     for output in stream:
