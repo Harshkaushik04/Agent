@@ -27,8 +27,6 @@ let webSocketToUsername=new Map<WebSocket,string>()
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({path:path.resolve(__dirname,'../../.env')})
-// Now your existing line will work
-// console.log(`dotenv location:${path.resolve(__dirname, '../../.env')}`)
 connectDB();
 let app=express();
 

@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 dotenv.config();
 const MONGO_URL="mongodb://localhost:27017/ConversationModel"
 import * as CustomTypes from "./types.js"
-import { timeStamp } from "console";
+import { timeStamp } from "console"
 
 export async function connectDB():Promise<void>{
     mongoose.connect(MONGO_URL);
